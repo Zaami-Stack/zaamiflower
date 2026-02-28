@@ -12,10 +12,27 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     const errorPayload = await response.json().catch(() => ({}));
-    throw new Error(errorPayload.message || "Request failed");
+    const error = new Error(errorPayload.message || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
 
   return response.json();
+}
+
+async function requestWithFallback(paths, options = {}) {
+  let lastError = null;
+  for (const path of paths) {
+    try {
+      return await request(path, options);
+    } catch (error) {
+      lastError = error;
+      if (error?.status !== 404) {
+        throw error;
+      }
+    }
+  }
+  throw lastError || new Error("Request failed");
 }
 
 function getFlowers(filters = {}) {
@@ -57,11 +74,12 @@ function createOrder(payload) {
 
 function getNotifications(limit = 20) {
   const params = new URLSearchParams({ limit: String(limit) });
-  return request(`/notifications?${params.toString()}`);
+  const query = `?${params.toString()}`;
+  return requestWithFallback([`/notifications${query}`, `/announcements${query}`]);
 }
 
 function createNotification(payload) {
-  return request("/notifications", {
+  return requestWithFallback(["/notifications", "/announcements"], {
     method: "POST",
     body: JSON.stringify(payload)
   });
@@ -69,7 +87,8 @@ function createNotification(payload) {
 
 function deleteNotification(notificationId) {
   const params = new URLSearchParams({ id: notificationId });
-  return request(`/notifications?${params.toString()}`, {
+  const query = `?${params.toString()}`;
+  return requestWithFallback([`/notifications${query}`, `/announcements${query}`], {
     method: "DELETE"
   });
 }

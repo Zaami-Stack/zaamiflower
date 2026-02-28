@@ -37,18 +37,37 @@ function withNotificationsHint(message) {
   return `${normalized}. If you use Supabase, run supabase/schema.sql to add notifications table.`;
 }
 
+function shouldUseMemoryFallback(error) {
+  const message = String(error?.message || "").toLowerCase();
+  if (!message.includes("notifications")) {
+    return false;
+  }
+  return (
+    message.includes("does not exist") ||
+    message.includes("could not find") ||
+    message.includes("relation") ||
+    message.includes("schema cache")
+  );
+}
+
 async function listNotifications(req, res) {
   const url = parseUrl(req);
   const limit = normalizeLimit(url.searchParams.get("limit"), 20);
 
   if (isDatabaseConfigured()) {
-    const rows = await dbRequest({
-      table: "notifications",
-      method: "GET",
-      query: { select: "*", order: "created_at.desc", limit },
-      prefer: null
-    });
-    return json(res, 200, rows.map(mapNotificationRowToModel));
+    try {
+      const rows = await dbRequest({
+        table: "notifications",
+        method: "GET",
+        query: { select: "*", order: "created_at.desc", limit },
+        prefer: null
+      });
+      return json(res, 200, rows.map(mapNotificationRowToModel));
+    } catch (error) {
+      if (!shouldUseMemoryFallback(error)) {
+        throw error;
+      }
+    }
   }
 
   const store = getStore();
@@ -89,12 +108,18 @@ async function createNotification(req, res) {
   };
 
   if (isDatabaseConfigured()) {
-    const rows = await dbRequest({
-      table: "notifications",
-      method: "POST",
-      body: mapNotificationModelToRow(notification)
-    });
-    return json(res, 201, mapNotificationRowToModel(rows[0]));
+    try {
+      const rows = await dbRequest({
+        table: "notifications",
+        method: "POST",
+        body: mapNotificationModelToRow(notification)
+      });
+      return json(res, 201, mapNotificationRowToModel(rows[0]));
+    } catch (error) {
+      if (!shouldUseMemoryFallback(error)) {
+        throw error;
+      }
+    }
   }
 
   const store = getStore();
@@ -114,17 +139,23 @@ async function deleteNotification(req, res) {
   }
 
   if (isDatabaseConfigured()) {
-    const rows = await dbRequest({
-      table: "notifications",
-      method: "DELETE",
-      query: { id: `eq.${notificationId}`, select: "*" }
-    });
+    try {
+      const rows = await dbRequest({
+        table: "notifications",
+        method: "DELETE",
+        query: { id: `eq.${notificationId}`, select: "*" }
+      });
 
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return json(res, 404, { message: "notification not found" });
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return json(res, 404, { message: "notification not found" });
+      }
+
+      return json(res, 200, { ok: true, removed: mapNotificationRowToModel(rows[0]) });
+    } catch (error) {
+      if (!shouldUseMemoryFallback(error)) {
+        throw error;
+      }
     }
-
-    return json(res, 200, { ok: true, removed: mapNotificationRowToModel(rows[0]) });
   }
 
   const store = getStore();

@@ -82,6 +82,9 @@ If auth variables are missing, login and protected routes return configuration e
 - `GET /api/notifications`
 - `POST /api/notifications` (admin)
 - `DELETE /api/notifications?id=<notificationId>` (admin)
+- `GET /api/announcements` (notification alias)
+- `POST /api/announcements` (admin alias)
+- `DELETE /api/announcements?id=<notificationId>` (admin alias)
 - `POST /api/auth/login`
 - `POST /api/auth/signup`
 - `POST /api/auth/logout`
