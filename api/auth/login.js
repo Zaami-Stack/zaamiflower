@@ -28,7 +28,14 @@ module.exports = async function handler(req, res) {
 
   const email = body?.email;
   const password = body?.password;
-  const user = authenticateCredentials(email, password);
+  let user;
+
+  try {
+    user = await authenticateCredentials(email, password);
+  } catch (error) {
+    clearSessionCookie(res);
+    return json(res, 500, { message: error.message || "login failed" });
+  }
 
   if (!user) {
     clearSessionCookie(res);

@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const user = registerCustomer({
+    const user = await registerCustomer({
       name: body?.name,
       email: body?.email,
       password: body?.password
@@ -33,4 +33,3 @@ module.exports = async function handler(req, res) {
     return json(res, 400, { message: error.message || "signup failed" });
   }
 };
-

@@ -1,13 +1,10 @@
 const { createHmac, randomBytes, scryptSync, timingSafeEqual } = require("node:crypto");
 const { createId, getStore } = require("./_store");
+const { dbRequest, isDatabaseConfigured } = require("./_db");
 const { json, parseCookies } = require("./_utils");
 
 const SESSION_COOKIE = "zaami_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
-
-function normalizeEmail(email) {
-  return String(email || "").trim().toLowerCase();
-}
 
 function base64urlEncode(value) {
   return Buffer.from(value, "utf8")
@@ -22,6 +19,10 @@ function base64urlDecode(value) {
   const padLength = normalized.length % 4 === 0 ? 0 : 4 - (normalized.length % 4);
   const padded = normalized + "=".repeat(padLength);
   return Buffer.from(padded, "base64").toString("utf8");
+}
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
 }
 
 function getSecret() {
@@ -147,6 +148,7 @@ function getConfiguredUsers() {
   const users = [
     {
       id: "admin-1",
+      name: "Admin",
       email: normalizeEmail(adminEmail),
       password: adminPassword,
       role: "admin"
@@ -156,6 +158,7 @@ function getConfiguredUsers() {
   if (customerEmail && customerPassword) {
     users.push({
       id: "customer-1",
+      name: "Customer",
       email: normalizeEmail(customerEmail),
       password: customerPassword,
       role: "customer"
@@ -165,7 +168,7 @@ function getConfiguredUsers() {
   return users;
 }
 
-function getRegisteredUsers() {
+function getLocalUsers() {
   const store = getStore();
   if (!Array.isArray(store.users)) {
     store.users = [];
@@ -173,54 +176,114 @@ function getRegisteredUsers() {
   return store.users;
 }
 
-function isAuthConfigured() {
-  return getConfiguredUsers().length > 0 && hasValidSecret();
+async function findDbUserByEmail(email) {
+  const rows = await dbRequest({
+    table: "users",
+    method: "GET",
+    query: {
+      select: "id,name,email,password,role,created_at",
+      email: `eq.${email}`,
+      limit: 1
+    },
+    prefer: null
+  });
+  return rows[0] || null;
 }
 
 function toPublicUser(user) {
   return {
     id: user.id,
+    name: user.name || "",
     email: user.email,
     role: user.role
   };
 }
 
-function authenticateCredentials(email, password) {
-  const normalizedEmail = normalizeEmail(email);
-  const users = [...getConfiguredUsers(), ...getRegisteredUsers()];
+function isAuthConfigured() {
+  return getConfiguredUsers().length > 0 && hasValidSecret();
+}
 
-  for (const user of users) {
+async function authenticateCredentials(email, password) {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPassword = String(password || "");
+
+  for (const user of getConfiguredUsers()) {
     if (!safeEqual(user.email, normalizedEmail)) {
       continue;
     }
-    if (verifyPassword(user.password, password)) {
+    if (verifyPassword(user.password, normalizedPassword)) {
       return toPublicUser(user);
     }
   }
 
-  return null;
+  if (isDatabaseConfigured()) {
+    const dbUser = await findDbUserByEmail(normalizedEmail);
+    if (!dbUser) {
+      return null;
+    }
+    if (!verifyPassword(dbUser.password, normalizedPassword)) {
+      return null;
+    }
+    return toPublicUser(dbUser);
+  }
+
+  const localUser = getLocalUsers().find((user) => safeEqual(user.email, normalizedEmail));
+  if (!localUser) {
+    return null;
+  }
+  if (!verifyPassword(localUser.password, normalizedPassword)) {
+    return null;
+  }
+  return toPublicUser(localUser);
 }
 
-function registerCustomer({ name, email, password }) {
-  const normalizedEmail = normalizeEmail(email);
+async function registerCustomer({ name, email, password }) {
   const normalizedName = String(name || "").trim();
+  const normalizedEmail = normalizeEmail(email);
   const normalizedPassword = String(password || "");
 
   if (normalizedName.length < 2) {
     throw new Error("name must be at least 2 characters");
   }
-
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     throw new Error("valid email is required");
   }
-
   if (normalizedPassword.length < 8) {
     throw new Error("password must be at least 8 characters");
   }
 
-  const allUsers = [...getConfiguredUsers(), ...getRegisteredUsers()];
-  const emailExists = allUsers.some((user) => safeEqual(user.email, normalizedEmail));
-  if (emailExists) {
+  const configuredUserExists = getConfiguredUsers().some((user) =>
+    safeEqual(user.email, normalizedEmail)
+  );
+  if (configuredUserExists) {
+    throw new Error("email already exists");
+  }
+
+  if (isDatabaseConfigured()) {
+    const existing = await findDbUserByEmail(normalizedEmail);
+    if (existing) {
+      throw new Error("email already exists");
+    }
+
+    const rows = await dbRequest({
+      table: "users",
+      method: "POST",
+      body: {
+        id: createId(12),
+        name: normalizedName,
+        email: normalizedEmail,
+        password: hashPassword(normalizedPassword),
+        role: "customer",
+        created_at: new Date().toISOString()
+      }
+    });
+
+    return toPublicUser(rows[0]);
+  }
+
+  const localUsers = getLocalUsers();
+  const localExists = localUsers.some((user) => safeEqual(user.email, normalizedEmail));
+  if (localExists) {
     throw new Error("email already exists");
   }
 
@@ -233,7 +296,7 @@ function registerCustomer({ name, email, password }) {
     createdAt: new Date().toISOString()
   };
 
-  getRegisteredUsers().push(user);
+  localUsers.push(user);
   return toPublicUser(user);
 }
 
@@ -267,6 +330,7 @@ function getSessionUser(req) {
   if (!payload) {
     return null;
   }
+
   return {
     id: payload.sub,
     email: payload.email,

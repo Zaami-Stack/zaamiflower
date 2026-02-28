@@ -67,6 +67,7 @@ function createId(size = 12) {
 }
 
 module.exports = {
+  seedFlowers,
   getStore,
   createId
 };
