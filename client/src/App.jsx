@@ -941,138 +941,146 @@ export default function App() {
             </button>
           </div>
 
-          <div className="cart-items">
-            {cartItems.length === 0 ? <p className="empty-note">Your cart is empty.</p> : null}
-            {cartItems.map((item) => {
-              const hasImage = Boolean(item.flower.image);
-              return (
-                <div key={item.flowerId} className="cart-item">
-                  <div
-                    className="cart-item-thumb"
-                    style={
-                      hasImage
-                        ? {
-                            backgroundImage: `url(${item.flower.image})`
-                          }
-                        : undefined
-                    }
-                  >
-                    {!hasImage ? (
-                      <span className="cart-item-letter">{iconForOccasion(item.flower.occasion)}</span>
-                    ) : null}
-                  </div>
-                  <div className="cart-item-content">
-                    <div className="cart-item-main">
-                      <div className="cart-item-name">{item.flower.name}</div>
-                      <div className="cart-item-price">{currency(item.lineTotal)}</div>
-                    </div>
-                    <div className="cart-item-subline">{currency(item.flower.price)} each</div>
-                    <div className="cart-qty">
-                      <button type="button" onClick={() => adjustCart(item.flower, -1)}>
-                        -
-                      </button>
-                      <span>{item.quantity}</span>
-                      <button type="button" onClick={() => adjustCart(item.flower, 1)}>
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="cart-footer">
-            <div className="cart-total">
-              <span>Total</span>
-              <strong>{currency(cartTotal)}</strong>
-            </div>
-
-            {!canCheckout ? (
-              <div className="guard-card compact">
-                <p>Login as customer or admin to place order.</p>
-                <button className="btn-primary" type="button" onClick={() => openAuth("login")}>
-                  Sign In
-                </button>
+          <div className="cart-body">
+            <section className="cart-items-panel">
+              <div className="cart-items-head">
+                <span>Selected Items</span>
+                <strong>{cartCount}</strong>
               </div>
-            ) : (
-              <form className="form-grid" onSubmit={handlePlaceOrder}>
-                <input
-                  placeholder="Full name"
-                  value={checkoutForm.name}
-                  onChange={(event) =>
-                    setCheckoutForm((previous) => ({
-                      ...previous,
-                      name: event.target.value
-                    }))
-                  }
-                  required
-                />
-                <input
-                  placeholder="Email"
-                  type="email"
-                  value={checkoutForm.email}
-                  onChange={(event) =>
-                    setCheckoutForm((previous) => ({
-                      ...previous,
-                      email: event.target.value
-                    }))
-                  }
-                  required
-                />
-                <textarea
-                  placeholder="Delivery address"
-                  value={checkoutForm.address}
-                  onChange={(event) =>
-                    setCheckoutForm((previous) => ({
-                      ...previous,
-                      address: event.target.value
-                    }))
-                  }
-                  required
-                />
-                <div className="payment-method">
-                  <span className="payment-label">Payment</span>
-                  <label>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="cash"
-                      checked={paymentMethod === "cash"}
-                      onChange={(event) => setPaymentMethod(event.target.value)}
-                    />
-                    Cash on Delivery
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="paypal"
-                      checked={paymentMethod === "paypal"}
-                      onChange={(event) => setPaymentMethod(event.target.value)}
-                    />
-                    PayPal
-                  </label>
+              <div className="cart-items">
+                {cartItems.length === 0 ? <p className="empty-note">Your cart is empty.</p> : null}
+                {cartItems.map((item) => {
+                  const hasImage = Boolean(item.flower.image);
+                  return (
+                    <div key={item.flowerId} className="cart-item">
+                      <div
+                        className="cart-item-thumb"
+                        style={
+                          hasImage
+                            ? {
+                                backgroundImage: `url(${item.flower.image})`
+                              }
+                            : undefined
+                        }
+                      >
+                        {!hasImage ? (
+                          <span className="cart-item-letter">{iconForOccasion(item.flower.occasion)}</span>
+                        ) : null}
+                      </div>
+                      <div className="cart-item-content">
+                        <div className="cart-item-main">
+                          <div className="cart-item-name">{item.flower.name}</div>
+                          <div className="cart-item-price">{currency(item.lineTotal)}</div>
+                        </div>
+                        <div className="cart-item-subline">{currency(item.flower.price)} each</div>
+                        <div className="cart-qty">
+                          <button type="button" onClick={() => adjustCart(item.flower, -1)}>
+                            -
+                          </button>
+                          <span>{item.quantity}</span>
+                          <button type="button" onClick={() => adjustCart(item.flower, 1)}>
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="cart-checkout-panel">
+              <div className="cart-total">
+                <span>Total</span>
+                <strong>{currency(cartTotal)}</strong>
+              </div>
+
+              {!canCheckout ? (
+                <div className="guard-card compact">
+                  <p>Login as customer or admin to place order.</p>
+                  <button className="btn-primary" type="button" onClick={() => openAuth("login")}>
+                    Sign In
+                  </button>
                 </div>
-                {paymentMethod === "paypal" ? (
-                  <a
-                    className="btn-primary paypal-link"
-                    href={paypalCheckoutUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Pay with PayPal
-                  </a>
-                ) : null}
-                <button className="btn-primary" type="submit" disabled={submittingOrder}>
-                  {submittingOrder
-                    ? "Placing..."
-                    : paymentMethod === "paypal"
-                      ? "Place Order (PayPal selected)"
-                      : "Place Order"}
-                </button>
-              </form>
-            )}
+              ) : (
+                <form className="form-grid" onSubmit={handlePlaceOrder}>
+                  <input
+                    placeholder="Full name"
+                    value={checkoutForm.name}
+                    onChange={(event) =>
+                      setCheckoutForm((previous) => ({
+                        ...previous,
+                        name: event.target.value
+                      }))
+                    }
+                    required
+                  />
+                  <input
+                    placeholder="Email"
+                    type="email"
+                    value={checkoutForm.email}
+                    onChange={(event) =>
+                      setCheckoutForm((previous) => ({
+                        ...previous,
+                        email: event.target.value
+                      }))
+                    }
+                    required
+                  />
+                  <textarea
+                    placeholder="Delivery address"
+                    value={checkoutForm.address}
+                    onChange={(event) =>
+                      setCheckoutForm((previous) => ({
+                        ...previous,
+                        address: event.target.value
+                      }))
+                    }
+                    required
+                  />
+                  <div className="payment-method">
+                    <span className="payment-label">Payment</span>
+                    <label>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cash"
+                        checked={paymentMethod === "cash"}
+                        onChange={(event) => setPaymentMethod(event.target.value)}
+                      />
+                      Cash on Delivery
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="paypal"
+                        checked={paymentMethod === "paypal"}
+                        onChange={(event) => setPaymentMethod(event.target.value)}
+                      />
+                      PayPal
+                    </label>
+                  </div>
+                  {paymentMethod === "paypal" ? (
+                    <a
+                      className="btn-primary paypal-link"
+                      href={paypalCheckoutUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Pay with PayPal
+                    </a>
+                  ) : null}
+                  <button className="btn-primary" type="submit" disabled={submittingOrder}>
+                    {submittingOrder
+                      ? "Placing..."
+                      : paymentMethod === "paypal"
+                        ? "Place Order (PayPal selected)"
+                        : "Place Order"}
+                  </button>
+                </form>
+              )}
+            </section>
           </div>
         </aside>
       </div>
