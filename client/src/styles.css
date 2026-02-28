@@ -411,6 +411,10 @@ main {
   background: var(--accent);
 }
 
+.cart-btn-mobile {
+  display: none;
+}
+
 .hero {
   margin-top: 78px;
   display: grid;
@@ -1496,6 +1500,37 @@ textarea:focus {
     box-shadow: 0 0 0 2px var(--cream);
   }
 
+  .cart-btn-mobile {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    margin-left: 6px;
+    flex: 0 0 38px;
+    background: transparent;
+    border: 1px solid var(--border);
+  }
+
+  .cart-btn-mobile:hover {
+    border-color: var(--accent);
+    background: transparent;
+  }
+
+  .cart-btn-mobile .cart-icon {
+    width: 15px;
+    height: 15px;
+    filter: none;
+  }
+
+  .cart-btn-mobile .cart-dot {
+    width: 7px;
+    height: 7px;
+    top: -2px;
+    right: -3px;
+    box-shadow: 0 0 0 2px var(--cream);
+  }
+
   .nav-menu {
     display: none;
     position: absolute;
@@ -1594,6 +1629,10 @@ textarea:focus {
   }
 
   .nav-actions .notify-btn {
+    display: none;
+  }
+
+  .nav-actions .cart-btn {
     display: none;
   }
 
