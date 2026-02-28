@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import {
   createFlower,
@@ -70,6 +71,7 @@ const currencyOptions = {
     rate: USD_TO_MAD_RATE
   }
 };
+gsap.registerPlugin(ScrollTrigger);
 
 function float(value) {
   const number = Number(value);
@@ -136,6 +138,8 @@ export default function App() {
   const featuredGridRef = useRef(null);
   const shopGridRef = useRef(null);
   const lenisRef = useRef(null);
+  const cartSidebarRef = useRef(null);
+  const authModalRef = useRef(null);
 
   const [flowers, setFlowers] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -276,17 +280,17 @@ export default function App() {
     });
 
     lenisRef.current = lenis;
+    lenis.on("scroll", ScrollTrigger.update);
 
-    let frame = 0;
     const tick = (time) => {
-      lenis.raf(time);
-      frame = window.requestAnimationFrame(tick);
+      lenis.raf(time * 1000);
     };
-
-    frame = window.requestAnimationFrame(tick);
+    gsap.ticker.add(tick);
+    gsap.ticker.lagSmoothing(0);
 
     return () => {
-      window.cancelAnimationFrame(frame);
+      lenis.off("scroll", ScrollTrigger.update);
+      gsap.ticker.remove(tick);
       lenis.destroy();
       lenisRef.current = null;
     };
@@ -334,6 +338,120 @@ export default function App() {
 
     return () => ctx.revert();
   }, [featuredFlowers.length, visibleFlowers.length, occasionFilter, search]);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.to(".hero-image", {
+        y: -10,
+        scale: 1.07,
+        duration: 4.5,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true
+      });
+
+      gsap.to(".hero-badge", {
+        y: -8,
+        duration: 2.6,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true
+      });
+    });
+
+    return () => ctx.revert();
+  }, []);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.utils.toArray(".section-header").forEach((header) => {
+        gsap.fromTo(
+          header,
+          { y: 18, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.7,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: header,
+              start: "top 86%",
+              once: true
+            }
+          }
+        );
+      });
+
+      [".about-card", ".stat-card", ".admin-card", ".order-row"].forEach((selector) => {
+        gsap.utils.toArray(selector).forEach((node) => {
+          gsap.fromTo(
+            node,
+            { y: 24, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.6,
+              ease: "power2.out",
+              scrollTrigger: {
+                trigger: node,
+                start: "top 90%",
+                once: true
+              }
+            }
+          );
+        });
+      });
+
+      if (document.querySelector(".marquee-wrap")) {
+        gsap.fromTo(
+          ".marquee-wrap",
+          { y: 12, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.65,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: ".marquee-wrap",
+              start: "top 98%",
+              once: true
+            }
+          }
+        );
+      }
+    });
+
+    ScrollTrigger.refresh();
+    return () => ctx.revert();
+  }, [isAdmin, orders.length, flowers.length]);
+
+  useEffect(() => {
+    if (!cartOpen || !cartSidebarRef.current) {
+      return undefined;
+    }
+
+    const tween = gsap.fromTo(
+      cartSidebarRef.current.querySelectorAll(".cart-header, .cart-items-panel, .cart-checkout-panel"),
+      { y: 18, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.45, stagger: 0.08, ease: "power2.out" }
+    );
+
+    return () => tween.kill();
+  }, [cartOpen, cartItems.length]);
+
+  useEffect(() => {
+    if (!authOpen || !authModalRef.current) {
+      return undefined;
+    }
+
+    const tween = gsap.fromTo(
+      authModalRef.current,
+      { y: 18, opacity: 0, scale: 0.985 },
+      { y: 0, opacity: 1, scale: 1, duration: 0.36, ease: "power2.out" }
+    );
+
+    return () => tween.kill();
+  }, [authOpen, authMode]);
 
   const refreshSession = async () => {
     setSessionLoading(true);
@@ -1016,7 +1134,7 @@ export default function App() {
       </main>
 
       <div className={`cart-overlay ${cartOpen ? "open" : ""}`} onClick={() => setCartOpen(false)}>
-        <aside className="cart-sidebar" onClick={(event) => event.stopPropagation()}>
+        <aside className="cart-sidebar" ref={cartSidebarRef} onClick={(event) => event.stopPropagation()}>
           <div className="cart-header">
             <h3>Your Cart</h3>
             <button type="button" className="icon-btn" onClick={() => setCartOpen(false)}>
@@ -1169,7 +1287,7 @@ export default function App() {
       </div>
 
       <div className={`modal-overlay ${authOpen ? "open" : ""}`} onClick={() => setAuthOpen(false)}>
-        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-card" ref={authModalRef} onClick={(event) => event.stopPropagation()}>
           <button type="button" className="icon-btn top-right" onClick={() => setAuthOpen(false)}>
             x
           </button>
