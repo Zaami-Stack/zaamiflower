@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bloom-basket
+    runtime: node
+    plan: free
+    autoDeploy: true
+    buildCommand: npm install && npm run install:all && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
