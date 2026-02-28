@@ -206,6 +206,10 @@ main {
   color: var(--accent);
 }
 
+.notify-btn-mobile {
+  display: none;
+}
+
 .notify-icon-wrap {
   position: relative;
   display: inline-flex;
@@ -1458,6 +1462,24 @@ textarea:focus {
     margin-left: auto;
   }
 
+  .notify-btn-mobile {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    background: transparent;
+    margin-left: 8px;
+  }
+
+  .notify-btn-mobile .notify-label {
+    display: none;
+  }
+
+  .notify-btn-mobile .notify-dot {
+    box-shadow: 0 0 0 2px var(--cream);
+  }
+
   .nav-menu {
     display: none;
     position: absolute;
@@ -1553,6 +1575,10 @@ textarea:focus {
     min-height: 42px;
     justify-content: center;
     padding: 10px 12px;
+  }
+
+  .nav-actions .notify-btn {
+    display: none;
   }
 
   .session-note {

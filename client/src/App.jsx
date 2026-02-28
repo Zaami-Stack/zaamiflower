@@ -875,6 +875,22 @@ export default function App() {
           <span />
         </button>
 
+        <button
+          className="notify-btn notify-btn-mobile"
+          type="button"
+          aria-label={
+            unreadNotificationCount > 0
+              ? `Open promotions, ${unreadNotificationCount} new`
+              : "Open promotions"
+          }
+          onClick={toggleNotifications}
+        >
+          <span className="notify-icon-wrap">
+            <img className="notify-icon" src="/bell-fill.svg" alt="" aria-hidden="true" />
+            {unreadNotificationCount > 0 ? <span className="notify-dot" aria-hidden="true" /> : null}
+          </span>
+        </button>
+
         <div className={`nav-menu ${menuOpen ? "open" : ""}`}>
           <div className="nav-links">
             <button type="button" onClick={() => navigateToSection(homeRef)}>
