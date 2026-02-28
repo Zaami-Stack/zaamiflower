@@ -1464,12 +1464,18 @@ textarea:focus {
 
   .notify-btn-mobile {
     display: inline-flex;
-    width: 42px;
-    height: 42px;
-    min-height: 42px;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
     padding: 0;
     background: transparent;
-    margin-left: 8px;
+    margin-left: 6px;
+    flex: 0 0 38px;
+  }
+
+  .notify-btn-mobile .notify-icon {
+    width: 15px;
+    height: 15px;
   }
 
   .notify-btn-mobile .notify-label {
@@ -1477,6 +1483,10 @@ textarea:focus {
   }
 
   .notify-btn-mobile .notify-dot {
+    width: 7px;
+    height: 7px;
+    top: -2px;
+    right: -3px;
     box-shadow: 0 0 0 2px var(--cream);
   }
 
