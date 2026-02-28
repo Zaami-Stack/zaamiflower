@@ -253,11 +253,17 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--sage);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: linear-gradient(140deg, #95a886 0%, #7f9470 100%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
   font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: #ffffff;
 }
 
 .hero {
@@ -940,15 +946,37 @@ textarea:focus {
 .cart-qty {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #f7f2eb;
+  padding: 4px;
+}
+
+.cart-qty span {
+  min-width: 28px;
+  text-align: center;
+  color: var(--dark);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .cart-qty button {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border);
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 999px;
   background: #ffffff;
+  color: var(--dark);
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.cart-qty button:hover {
+  background: var(--dark);
+  color: #ffffff;
 }
 
 .cart-footer {
@@ -1260,9 +1288,27 @@ textarea:focus {
   }
 
   .cart-count {
-    width: 22px;
-    height: 22px;
-    font-size: 10px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .cart-qty {
+    padding: 5px;
+    gap: 5px;
+  }
+
+  .cart-qty span {
+    min-width: 30px;
+    font-size: 14px;
+  }
+
+  .cart-qty button {
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
   }
 
   .hero {
