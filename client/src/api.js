@@ -37,6 +37,13 @@ function createFlower(payload) {
   });
 }
 
+function deleteFlower(flowerId) {
+  const params = new URLSearchParams({ id: flowerId });
+  return request(`/flowers?${params.toString()}`, {
+    method: "DELETE"
+  });
+}
+
 function getOrders() {
   return request("/orders");
 }
@@ -68,6 +75,7 @@ function logout() {
 
 export {
   createFlower,
+  deleteFlower,
   createOrder,
   getFlowers,
   getOrders,

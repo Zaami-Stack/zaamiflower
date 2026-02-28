@@ -62,6 +62,7 @@ If auth variables are missing, login and protected routes return configuration e
 - `GET /api/health`
 - `GET /api/flowers?search=&occasion=&maxPrice=`
 - `POST /api/flowers` (admin)
+- `DELETE /api/flowers?id=<flowerId>` (admin)
 - `GET /api/orders` (admin)
 - `POST /api/orders` (admin or customer)
 - `POST /api/auth/login`

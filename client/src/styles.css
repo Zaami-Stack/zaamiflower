@@ -575,6 +575,30 @@ th {
   color: var(--muted);
 }
 
+.table-action-cell {
+  width: 108px;
+}
+
+.danger-btn {
+  border: 1px solid #e6c8c3;
+  background: #fff3f1;
+  color: #a34b3c;
+  border-radius: 2px;
+  padding: 6px 10px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.danger-btn:hover:not(:disabled) {
+  background: #ffdcd5;
+}
+
+.danger-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .orders-list {
   display: grid;
   gap: 10px;
@@ -879,4 +903,3 @@ textarea:focus {
     align-items: start;
   }
 }
-

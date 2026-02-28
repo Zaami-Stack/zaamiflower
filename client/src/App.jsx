@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   createFlower,
   createOrder,
+  deleteFlower,
   getFlowers,
   getOrders,
   getSession,
@@ -110,6 +111,7 @@ export default function App() {
   const [occasionFilter, setOccasionFilter] = useState("all");
   const [loadingFlowers, setLoadingFlowers] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [deletingFlowerId, setDeletingFlowerId] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -380,6 +382,28 @@ export default function App() {
     }
   };
 
+  const handleDeleteFlower = async (flower) => {
+    const confirmed = window.confirm(`Remove "${flower.name}" from inventory?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingFlowerId(flower.id);
+    try {
+      await deleteFlower(flower.id);
+      setCart((previous) => {
+        const { [flower.id]: _removed, ...rest } = previous;
+        return rest;
+      });
+      showToast("Flower removed.");
+      refreshFlowers();
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      setDeletingFlowerId("");
+    }
+  };
+
   return (
     <div className="site-shell">
       <nav className="top-nav">
@@ -579,6 +603,7 @@ export default function App() {
                             <th>Occasion</th>
                             <th>Price</th>
                             <th>Stock</th>
+                            <th>Action</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -588,6 +613,16 @@ export default function App() {
                               <td>{flower.occasion}</td>
                               <td>{currency(flower.price)}</td>
                               <td>{flower.stock}</td>
+                              <td className="table-action-cell">
+                                <button
+                                  type="button"
+                                  className="danger-btn"
+                                  disabled={deletingFlowerId === flower.id}
+                                  onClick={() => handleDeleteFlower(flower)}
+                                >
+                                  {deletingFlowerId === flower.id ? "Removing..." : "Remove"}
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -830,4 +865,3 @@ export default function App() {
     </div>
   );
 }
-

@@ -80,6 +80,25 @@ async function createFlower(req, res) {
   return json(res, 201, flower);
 }
 
+function deleteFlower(req, res) {
+  const url = parseUrl(req);
+  const flowerId = String(url.searchParams.get("id") || "").trim();
+
+  if (!flowerId) {
+    return json(res, 400, { message: "id query param is required" });
+  }
+
+  const store = getStore();
+  const flowerIndex = store.flowers.findIndex((flower) => flower.id === flowerId);
+
+  if (flowerIndex === -1) {
+    return json(res, 404, { message: "flower not found" });
+  }
+
+  const [removedFlower] = store.flowers.splice(flowerIndex, 1);
+  return json(res, 200, { ok: true, removed: removedFlower });
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === "GET") {
     return listFlowers(req, res);
@@ -93,5 +112,13 @@ module.exports = async function handler(req, res) {
     return createFlower(req, res);
   }
 
-  return methodNotAllowed(res, ["GET", "POST"]);
+  if (req.method === "DELETE") {
+    const user = requireRole(req, res, ["admin"]);
+    if (!user) {
+      return;
+    }
+    return deleteFlower(req, res);
+  }
+
+  return methodNotAllowed(res, ["GET", "POST", "DELETE"]);
 };
