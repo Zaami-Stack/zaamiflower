@@ -63,6 +63,41 @@ main {
   scroll-margin-top: 110px;
 }
 
+.promo-highlight {
+  margin: 32px 0 8px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  padding: 14px 16px;
+}
+
+.promo-highlight-tag {
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.promo-highlight-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.promo-highlight h3 {
+  margin: 0;
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(24px, 4vw, 30px);
+  font-weight: 400;
+}
+
+.promo-highlight p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .top-nav {
   position: fixed;
   top: 0;
@@ -1582,6 +1617,17 @@ textarea:focus {
     margin-top: 88px;
     grid-template-columns: 1fr;
     min-height: auto;
+  }
+
+  .promo-highlight {
+    margin-top: 20px;
+    padding: 12px;
+  }
+
+  .promo-highlight-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 
   .hero-left {

@@ -266,6 +266,10 @@ export default function App() {
     () => notifications.filter((item) => toTimestamp(item.createdAt) > seenNotificationAt).length,
     [notifications, seenNotificationAt]
   );
+  const latestNotification = useMemo(
+    () => (notifications.length > 0 ? notifications[0] : null),
+    [notifications]
+  );
 
   const formatNotificationDate = (value) =>
     new Intl.DateTimeFormat("en-US", {
@@ -1012,6 +1016,21 @@ export default function App() {
       </div>
 
       <main>
+        {!notificationsLoading && !notificationsError && latestNotification ? (
+          <section className="promo-highlight">
+            <p className="promo-highlight-tag">Latest Promo</p>
+            <div className="promo-highlight-main">
+              <div>
+                <h3>{latestNotification.title}</h3>
+                {latestNotification.message ? <p>{latestNotification.message}</p> : null}
+              </div>
+              <button className="btn-ghost small" type="button" onClick={toggleNotifications}>
+                See All
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         <section className="section scroll-section">
           <div className="section-header">
             <h2 className="section-title">
@@ -1261,22 +1280,6 @@ export default function App() {
                 </div>
 
                 <div className="admin-card">
-                  <h3>Recent Orders</h3>
-                  <div className="orders-list">
-                    {orders.length === 0 ? <p>No orders yet.</p> : null}
-                    {orders.slice(0, 8).map((order) => (
-                      <div key={order.id} className="order-row">
-                        <div>
-                          <strong>#{order.id}</strong>
-                          <p>{order.customer.name}</p>
-                        </div>
-                        <div className="order-total">{formatCurrency(order.total)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="admin-card">
                   <h3>Promo Notifications</h3>
                   <form className="form-grid" onSubmit={handleCreateNotification}>
                     <input
@@ -1320,6 +1323,22 @@ export default function App() {
                         >
                           {deletingNotificationId === notification.id ? "Removing..." : "Remove"}
                         </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="admin-card">
+                  <h3>Recent Orders</h3>
+                  <div className="orders-list">
+                    {orders.length === 0 ? <p>No orders yet.</p> : null}
+                    {orders.slice(0, 8).map((order) => (
+                      <div key={order.id} className="order-row">
+                        <div>
+                          <strong>#{order.id}</strong>
+                          <p>{order.customer.name}</p>
+                        </div>
+                        <div className="order-total">{formatCurrency(order.total)}</div>
                       </div>
                     ))}
                   </div>
