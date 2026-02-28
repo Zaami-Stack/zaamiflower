@@ -943,23 +943,43 @@ export default function App() {
 
           <div className="cart-items">
             {cartItems.length === 0 ? <p className="empty-note">Your cart is empty.</p> : null}
-            {cartItems.map((item) => (
-              <div key={item.flowerId} className="cart-item">
-                <div className="cart-item-main">
-                  <div className="cart-item-name">{item.flower.name}</div>
-                  <div className="cart-item-price">{currency(item.lineTotal)}</div>
+            {cartItems.map((item) => {
+              const hasImage = Boolean(item.flower.image);
+              return (
+                <div key={item.flowerId} className="cart-item">
+                  <div
+                    className="cart-item-thumb"
+                    style={
+                      hasImage
+                        ? {
+                            backgroundImage: `url(${item.flower.image})`
+                          }
+                        : undefined
+                    }
+                  >
+                    {!hasImage ? (
+                      <span className="cart-item-letter">{iconForOccasion(item.flower.occasion)}</span>
+                    ) : null}
+                  </div>
+                  <div className="cart-item-content">
+                    <div className="cart-item-main">
+                      <div className="cart-item-name">{item.flower.name}</div>
+                      <div className="cart-item-price">{currency(item.lineTotal)}</div>
+                    </div>
+                    <div className="cart-item-subline">{currency(item.flower.price)} each</div>
+                    <div className="cart-qty">
+                      <button type="button" onClick={() => adjustCart(item.flower, -1)}>
+                        -
+                      </button>
+                      <span>{item.quantity}</span>
+                      <button type="button" onClick={() => adjustCart(item.flower, 1)}>
+                        +
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="cart-qty">
-                  <button type="button" onClick={() => adjustCart(item.flower, -1)}>
-                    -
-                  </button>
-                  <span>{item.quantity}</span>
-                  <button type="button" onClick={() => adjustCart(item.flower, 1)}>
-                    +
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="cart-footer">
