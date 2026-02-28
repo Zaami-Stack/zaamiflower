@@ -1,8 +1,13 @@
-const { createHmac, timingSafeEqual } = require("node:crypto");
+const { createHmac, randomBytes, scryptSync, timingSafeEqual } = require("node:crypto");
+const { createId, getStore } = require("./_store");
 const { json, parseCookies } = require("./_utils");
 
 const SESSION_COOKIE = "zaami_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24;
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
 
 function base64urlEncode(value) {
   return Buffer.from(value, "utf8")
@@ -97,6 +102,35 @@ function safeEqual(a, b) {
   return timingSafeEqual(left, right);
 }
 
+function hashPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(String(password), salt, 64).toString("hex");
+  return `scrypt$${salt}$${hash}`;
+}
+
+function verifyPassword(storedPassword, inputPassword) {
+  const stored = String(storedPassword || "");
+  const input = String(inputPassword || "");
+
+  if (!stored.startsWith("scrypt$")) {
+    return safeEqual(stored, input);
+  }
+
+  const parts = stored.split("$");
+  if (parts.length !== 3) {
+    return false;
+  }
+
+  const [, salt, expectedHashHex] = parts;
+  const inputHashHex = scryptSync(input, salt, 64).toString("hex");
+  const expected = Buffer.from(expectedHashHex, "hex");
+  const actual = Buffer.from(inputHashHex, "hex");
+  if (expected.length !== actual.length) {
+    return false;
+  }
+  return timingSafeEqual(expected, actual);
+}
+
 function getConfiguredUsers() {
   const isProduction = process.env.NODE_ENV === "production";
   const adminEmail = process.env.ADMIN_EMAIL || (isProduction ? "" : "admin@zaamiflower.com");
@@ -111,13 +145,18 @@ function getConfiguredUsers() {
   }
 
   const users = [
-    { id: "admin-1", email: adminEmail.toLowerCase(), password: adminPassword, role: "admin" }
+    {
+      id: "admin-1",
+      email: normalizeEmail(adminEmail),
+      password: adminPassword,
+      role: "admin"
+    }
   ];
 
   if (customerEmail && customerPassword) {
     users.push({
       id: "customer-1",
-      email: customerEmail.toLowerCase(),
+      email: normalizeEmail(customerEmail),
       password: customerPassword,
       role: "customer"
     });
@@ -126,21 +165,76 @@ function getConfiguredUsers() {
   return users;
 }
 
+function getRegisteredUsers() {
+  const store = getStore();
+  if (!Array.isArray(store.users)) {
+    store.users = [];
+  }
+  return store.users;
+}
+
 function isAuthConfigured() {
   return getConfiguredUsers().length > 0 && hasValidSecret();
 }
 
+function toPublicUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role
+  };
+}
+
 function authenticateCredentials(email, password) {
-  const normalizedEmail = String(email || "").trim().toLowerCase();
-  const normalizedPassword = String(password || "");
-  const users = getConfiguredUsers();
+  const normalizedEmail = normalizeEmail(email);
+  const users = [...getConfiguredUsers(), ...getRegisteredUsers()];
 
   for (const user of users) {
-    if (safeEqual(user.email, normalizedEmail) && safeEqual(user.password, normalizedPassword)) {
-      return { id: user.id, email: user.email, role: user.role };
+    if (!safeEqual(user.email, normalizedEmail)) {
+      continue;
+    }
+    if (verifyPassword(user.password, password)) {
+      return toPublicUser(user);
     }
   }
+
   return null;
+}
+
+function registerCustomer({ name, email, password }) {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedName = String(name || "").trim();
+  const normalizedPassword = String(password || "");
+
+  if (normalizedName.length < 2) {
+    throw new Error("name must be at least 2 characters");
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new Error("valid email is required");
+  }
+
+  if (normalizedPassword.length < 8) {
+    throw new Error("password must be at least 8 characters");
+  }
+
+  const allUsers = [...getConfiguredUsers(), ...getRegisteredUsers()];
+  const emailExists = allUsers.some((user) => safeEqual(user.email, normalizedEmail));
+  if (emailExists) {
+    throw new Error("email already exists");
+  }
+
+  const user = {
+    id: createId(12),
+    name: normalizedName,
+    email: normalizedEmail,
+    password: hashPassword(normalizedPassword),
+    role: "customer",
+    createdAt: new Date().toISOString()
+  };
+
+  getRegisteredUsers().push(user);
+  return toPublicUser(user);
 }
 
 function serializeCookie(name, value, maxAgeSeconds) {
@@ -205,6 +299,8 @@ module.exports = {
   clearSessionCookie,
   getSessionUser,
   isAuthConfigured,
+  registerCustomer,
   requireRole,
   setSessionCookie
 };
+

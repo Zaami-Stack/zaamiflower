@@ -66,6 +66,7 @@ If auth variables are missing, login and protected routes return configuration e
 - `GET /api/orders` (admin)
 - `POST /api/orders` (admin or customer)
 - `POST /api/auth/login`
+- `POST /api/auth/signup`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 

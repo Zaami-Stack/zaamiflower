@@ -55,7 +55,8 @@ function getStore() {
   if (!globalThis.__FLOWER_STORE__) {
     globalThis.__FLOWER_STORE__ = {
       flowers: clone(seedFlowers),
-      orders: []
+      orders: [],
+      users: []
     };
   }
   return globalThis.__FLOWER_STORE__;
@@ -69,4 +70,3 @@ module.exports = {
   getStore,
   createId
 };
-

@@ -7,6 +7,7 @@ import {
   getOrders,
   getSession,
   login,
+  signup,
   logout
 } from "./api";
 
@@ -26,6 +27,12 @@ const initialCheckoutForm = {
 };
 
 const initialLoginForm = {
+  email: "",
+  password: ""
+};
+
+const initialSignupForm = {
+  name: "",
   email: "",
   password: ""
 };
@@ -114,9 +121,11 @@ export default function App() {
   const [deletingFlowerId, setDeletingFlowerId] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
   const [sessionLoading, setSessionLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [loginForm, setLoginForm] = useState(initialLoginForm);
+  const [signupForm, setSignupForm] = useState(initialSignupForm);
   const [flowerForm, setFlowerForm] = useState(initialFlowerForm);
   const [checkoutForm, setCheckoutForm] = useState(initialCheckoutForm);
   const [toast, setToast] = useState("");
@@ -246,6 +255,17 @@ export default function App() {
     }));
   }, [user]);
 
+  useEffect(() => {
+    if (activePage === "admin" && !isAdmin) {
+      setActivePage("home");
+    }
+  }, [activePage, isAdmin]);
+
+  const openAuth = (mode = "login") => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  };
+
   const adjustCart = (flower, delta) => {
     setCart((previous) => {
       const currentQty = Number(previous[flower.id] || 0);
@@ -289,8 +309,27 @@ export default function App() {
       const response = await login(loginForm);
       setUser(response.user);
       setAuthOpen(false);
+      setAuthMode("login");
       setLoginForm(initialLoginForm);
       showToast(`Signed in as ${response.user.role}.`);
+    } catch (error) {
+      showToast(error.message);
+    }
+  };
+
+  const handleSignup = async (event) => {
+    event.preventDefault();
+    try {
+      const response = await signup(signupForm);
+      setUser(response.user);
+      setSignupForm(initialSignupForm);
+      setLoginForm((previous) => ({
+        ...previous,
+        email: response.user.email
+      }));
+      setAuthOpen(false);
+      setAuthMode("login");
+      showToast("Account created. You are now signed in.");
     } catch (error) {
       showToast(error.message);
     }
@@ -313,7 +352,7 @@ export default function App() {
 
     if (!canCheckout) {
       showToast("Sign in as customer or admin to place orders.");
-      setAuthOpen(true);
+      openAuth("login");
       return;
     }
 
@@ -418,9 +457,11 @@ export default function App() {
           <button type="button" onClick={() => setActivePage("shop")}>
             Shop
           </button>
-          <button type="button" onClick={() => setActivePage("admin")}>
-            Admin
-          </button>
+          {isAdmin ? (
+            <button type="button" onClick={() => setActivePage("admin")}>
+              Admin
+            </button>
+          ) : null}
         </div>
 
         <div className="nav-actions">
@@ -435,7 +476,7 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <button className="btn-ghost small" type="button" onClick={() => setAuthOpen(true)}>
+            <button className="btn-ghost small" type="button" onClick={() => openAuth("login")}>
               Sign In
             </button>
           )}
@@ -462,9 +503,15 @@ export default function App() {
               <button className="btn-primary" type="button" onClick={() => setActivePage("shop")}>
                 Shop Collection
               </button>
-              <button className="btn-ghost" type="button" onClick={() => setActivePage("admin")}>
-                Dashboard
-              </button>
+              {isAdmin ? (
+                <button className="btn-ghost" type="button" onClick={() => setActivePage("admin")}>
+                  Dashboard
+                </button>
+              ) : (
+                <button className="btn-ghost" type="button" onClick={() => openAuth("signup")}>
+                  Create Account
+                </button>
+              )}
             </div>
           </div>
           <div className="hero-right">
@@ -556,7 +603,7 @@ export default function App() {
           </section>
         ) : null}
 
-        {activePage === "admin" ? (
+        {activePage === "admin" && isAdmin ? (
           <section className="section admin-section">
             <div className="section-header">
               <h2 className="section-title">
@@ -564,172 +611,163 @@ export default function App() {
               </h2>
             </div>
 
-            {!isAdmin ? (
-              <div className="guard-card">
-                <p>Admin role required to manage inventory and view orders.</p>
-                <button className="btn-primary" type="button" onClick={() => setAuthOpen(true)}>
-                  Login as Admin
-                </button>
+            <>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-value">{currency(dashboardStats.revenue)}</div>
+                  <div className="stat-label">Revenue</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{dashboardStats.orderCount}</div>
+                  <div className="stat-label">Orders</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{flowers.length}</div>
+                  <div className="stat-label">Products</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{dashboardStats.lowStock}</div>
+                  <div className="stat-label">Low Stock</div>
+                </div>
               </div>
-            ) : (
-              <>
-                <div className="stats-grid">
-                  <div className="stat-card">
-                    <div className="stat-value">{currency(dashboardStats.revenue)}</div>
-                    <div className="stat-label">Revenue</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{dashboardStats.orderCount}</div>
-                    <div className="stat-label">Orders</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{flowers.length}</div>
-                    <div className="stat-label">Products</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{dashboardStats.lowStock}</div>
-                    <div className="stat-label">Low Stock</div>
-                  </div>
-                </div>
 
-                <div className="admin-panels">
-                  <div className="admin-card">
-                    <h3>Inventory</h3>
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Name</th>
-                            <th>Occasion</th>
-                            <th>Price</th>
-                            <th>Stock</th>
-                            <th>Action</th>
+              <div className="admin-panels">
+                <div className="admin-card">
+                  <h3>Inventory</h3>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Occasion</th>
+                          <th>Price</th>
+                          <th>Stock</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {flowers.map((flower) => (
+                          <tr key={flower.id}>
+                            <td>{flower.name}</td>
+                            <td>{flower.occasion}</td>
+                            <td>{currency(flower.price)}</td>
+                            <td>{flower.stock}</td>
+                            <td className="table-action-cell">
+                              <button
+                                type="button"
+                                className="danger-btn"
+                                disabled={deletingFlowerId === flower.id}
+                                onClick={() => handleDeleteFlower(flower)}
+                              >
+                                {deletingFlowerId === flower.id ? "Removing..." : "Remove"}
+                              </button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {flowers.map((flower) => (
-                            <tr key={flower.id}>
-                              <td>{flower.name}</td>
-                              <td>{flower.occasion}</td>
-                              <td>{currency(flower.price)}</td>
-                              <td>{flower.stock}</td>
-                              <td className="table-action-cell">
-                                <button
-                                  type="button"
-                                  className="danger-btn"
-                                  disabled={deletingFlowerId === flower.id}
-                                  onClick={() => handleDeleteFlower(flower)}
-                                >
-                                  {deletingFlowerId === flower.id ? "Removing..." : "Remove"}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div className="admin-card">
-                    <h3>Add Flower</h3>
-                    <form className="form-grid" onSubmit={handleCreateFlower}>
-                      <input
-                        placeholder="Flower name"
-                        value={flowerForm.name}
-                        onChange={(event) =>
-                          setFlowerForm((previous) => ({
-                            ...previous,
-                            name: event.target.value
-                          }))
-                        }
-                        required
-                      />
-                      <input
-                        placeholder="Price"
-                        type="number"
-                        min="1"
-                        step="0.01"
-                        value={flowerForm.price}
-                        onChange={(event) =>
-                          setFlowerForm((previous) => ({
-                            ...previous,
-                            price: event.target.value
-                          }))
-                        }
-                        required
-                      />
-                      <input
-                        placeholder="Stock"
-                        type="number"
-                        min="0"
-                        value={flowerForm.stock}
-                        onChange={(event) =>
-                          setFlowerForm((previous) => ({
-                            ...previous,
-                            stock: event.target.value
-                          }))
-                        }
-                        required
-                      />
-                      <select
-                        value={flowerForm.occasion}
-                        onChange={(event) =>
-                          setFlowerForm((previous) => ({
-                            ...previous,
-                            occasion: event.target.value
-                          }))
-                        }
-                      >
-                        <option value="general">General</option>
-                        <option value="romance">Romance</option>
-                        <option value="birthday">Birthday</option>
-                        <option value="wedding">Wedding</option>
-                        <option value="thank-you">Thank You</option>
-                      </select>
-                      <input
-                        placeholder="Image URL"
-                        value={flowerForm.image}
-                        onChange={(event) =>
-                          setFlowerForm((previous) => ({
-                            ...previous,
-                            image: event.target.value
-                          }))
-                        }
-                      />
-                      <textarea
-                        placeholder="Description"
-                        value={flowerForm.description}
-                        onChange={(event) =>
-                          setFlowerForm((previous) => ({
-                            ...previous,
-                            description: event.target.value
-                          }))
-                        }
-                      />
-                      <button className="btn-primary" type="submit">
-                        Save Flower
-                      </button>
-                    </form>
-                  </div>
-
-                  <div className="admin-card">
-                    <h3>Recent Orders</h3>
-                    <div className="orders-list">
-                      {orders.length === 0 ? <p>No orders yet.</p> : null}
-                      {orders.slice(0, 8).map((order) => (
-                        <div key={order.id} className="order-row">
-                          <div>
-                            <strong>#{order.id}</strong>
-                            <p>{order.customer.name}</p>
-                          </div>
-                          <div className="order-total">{currency(order.total)}</div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              </>
-            )}
+
+                <div className="admin-card">
+                  <h3>Add Flower</h3>
+                  <form className="form-grid" onSubmit={handleCreateFlower}>
+                    <input
+                      placeholder="Flower name"
+                      value={flowerForm.name}
+                      onChange={(event) =>
+                        setFlowerForm((previous) => ({
+                          ...previous,
+                          name: event.target.value
+                        }))
+                      }
+                      required
+                    />
+                    <input
+                      placeholder="Price"
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={flowerForm.price}
+                      onChange={(event) =>
+                        setFlowerForm((previous) => ({
+                          ...previous,
+                          price: event.target.value
+                        }))
+                      }
+                      required
+                    />
+                    <input
+                      placeholder="Stock"
+                      type="number"
+                      min="0"
+                      value={flowerForm.stock}
+                      onChange={(event) =>
+                        setFlowerForm((previous) => ({
+                          ...previous,
+                          stock: event.target.value
+                        }))
+                      }
+                      required
+                    />
+                    <select
+                      value={flowerForm.occasion}
+                      onChange={(event) =>
+                        setFlowerForm((previous) => ({
+                          ...previous,
+                          occasion: event.target.value
+                        }))
+                      }
+                    >
+                      <option value="general">General</option>
+                      <option value="romance">Romance</option>
+                      <option value="birthday">Birthday</option>
+                      <option value="wedding">Wedding</option>
+                      <option value="thank-you">Thank You</option>
+                    </select>
+                    <input
+                      placeholder="Image URL"
+                      value={flowerForm.image}
+                      onChange={(event) =>
+                        setFlowerForm((previous) => ({
+                          ...previous,
+                          image: event.target.value
+                        }))
+                      }
+                    />
+                    <textarea
+                      placeholder="Description"
+                      value={flowerForm.description}
+                      onChange={(event) =>
+                        setFlowerForm((previous) => ({
+                          ...previous,
+                          description: event.target.value
+                        }))
+                      }
+                    />
+                    <button className="btn-primary" type="submit">
+                      Save Flower
+                    </button>
+                  </form>
+                </div>
+
+                <div className="admin-card">
+                  <h3>Recent Orders</h3>
+                  <div className="orders-list">
+                    {orders.length === 0 ? <p>No orders yet.</p> : null}
+                    {orders.slice(0, 8).map((order) => (
+                      <div key={order.id} className="order-row">
+                        <div>
+                          <strong>#{order.id}</strong>
+                          <p>{order.customer.name}</p>
+                        </div>
+                        <div className="order-total">{currency(order.total)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
           </section>
         ) : null}
       </main>
@@ -773,7 +811,7 @@ export default function App() {
             {!canCheckout ? (
               <div className="guard-card compact">
                 <p>Login as customer or admin to place order.</p>
-                <button className="btn-primary" type="button" onClick={() => setAuthOpen(true)}>
+                <button className="btn-primary" type="button" onClick={() => openAuth("login")}>
                   Sign In
                 </button>
               </div>
@@ -827,37 +865,99 @@ export default function App() {
           <button type="button" className="icon-btn top-right" onClick={() => setAuthOpen(false)}>
             x
           </button>
-          <h3>Sign In</h3>
-          <p>Use your configured role credentials.</p>
-          <form className="form-grid" onSubmit={handleLogin}>
-            <input
-              type="email"
-              placeholder="Email"
-              value={loginForm.email}
-              onChange={(event) =>
-                setLoginForm((previous) => ({
-                  ...previous,
-                  email: event.target.value
-                }))
-              }
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={loginForm.password}
-              onChange={(event) =>
-                setLoginForm((previous) => ({
-                  ...previous,
-                  password: event.target.value
-                }))
-              }
-              required
-            />
-            <button className="btn-primary" type="submit">
-              Login
-            </button>
-          </form>
+          {authMode === "login" ? (
+            <>
+              <h3>Sign In</h3>
+              <p>Use your account credentials.</p>
+              <form className="form-grid" onSubmit={handleLogin}>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={loginForm.email}
+                  onChange={(event) =>
+                    setLoginForm((previous) => ({
+                      ...previous,
+                      email: event.target.value
+                    }))
+                  }
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={loginForm.password}
+                  onChange={(event) =>
+                    setLoginForm((previous) => ({
+                      ...previous,
+                      password: event.target.value
+                    }))
+                  }
+                  required
+                />
+                <button className="btn-primary" type="submit">
+                  Login
+                </button>
+              </form>
+              <div className="auth-switch">
+                <span>New here?</span>
+                <button type="button" className="link-btn" onClick={() => setAuthMode("signup")}>
+                  Create account
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3>Create Account</h3>
+              <p>Sign up as a normal customer account.</p>
+              <form className="form-grid" onSubmit={handleSignup}>
+                <input
+                  type="text"
+                  placeholder="Full name"
+                  value={signupForm.name}
+                  onChange={(event) =>
+                    setSignupForm((previous) => ({
+                      ...previous,
+                      name: event.target.value
+                    }))
+                  }
+                  required
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={signupForm.email}
+                  onChange={(event) =>
+                    setSignupForm((previous) => ({
+                      ...previous,
+                      email: event.target.value
+                    }))
+                  }
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Password (min 8 chars)"
+                  value={signupForm.password}
+                  onChange={(event) =>
+                    setSignupForm((previous) => ({
+                      ...previous,
+                      password: event.target.value
+                    }))
+                  }
+                  required
+                />
+                <button className="btn-primary" type="submit">
+                  Sign Up
+                </button>
+              </form>
+              <div className="auth-switch">
+                <span>Already have an account?</span>
+                <button type="button" className="link-btn" onClick={() => setAuthMode("login")}>
+                  Sign in
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

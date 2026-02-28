@@ -66,6 +66,13 @@ function login(payload) {
   });
 }
 
+function signup(payload) {
+  return request("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 function logout() {
   return request("/auth/logout", {
     method: "POST",
@@ -81,5 +88,6 @@ export {
   getOrders,
   getSession,
   login,
+  signup,
   logout
 };
