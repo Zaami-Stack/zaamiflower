@@ -90,6 +90,13 @@ If auth variables are missing, login and protected routes return configuration e
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 
+`POST /api/orders` expects customer payload with:
+
+- `name`
+- `email`
+- `phone`
+- `address`
+
 ## Important Free-Tier Note
 
 Supabase free projects can pause when inactive, so the first request after idle time may be slower.

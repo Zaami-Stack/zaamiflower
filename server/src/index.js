@@ -122,12 +122,15 @@ app.post("/api/orders", async (req, res, next) => {
 
     const customerName = String(customer.name || "").trim();
     const customerEmail = String(customer.email || "").trim();
+    const customerPhone = String(customer.phone || "").trim();
     const customerAddress = String(customer.address || "").trim();
 
-    if (!customerName || !customerEmail || !customerAddress) {
+    if (!customerName || !customerEmail || !customerPhone || !customerAddress) {
       return res
         .status(400)
-        .json({ message: "customer.name, customer.email and customer.address are required" });
+        .json({
+          message: "customer.name, customer.email, customer.phone and customer.address are required"
+        });
     }
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -182,6 +185,7 @@ app.post("/api/orders", async (req, res, next) => {
       customer: {
         name: customerName,
         email: customerEmail,
+        phone: customerPhone,
         address: customerAddress
       },
       items: normalizedItems,

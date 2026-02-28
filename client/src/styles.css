@@ -964,6 +964,12 @@ th {
   font-size: 13px;
 }
 
+.order-contact {
+  margin-top: 2px;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
+
 .order-total {
   font-family: "Cormorant Garamond", serif;
   font-size: 26px;

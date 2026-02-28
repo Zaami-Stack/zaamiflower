@@ -19,6 +19,7 @@ function toOrderModel(orderRow, itemRows) {
     customer: {
       name: orderRow.customer_name,
       email: orderRow.customer_email,
+      phone: orderRow.customer_phone || "",
       address: orderRow.customer_address
     },
     items,
@@ -77,10 +78,11 @@ function validateOrderPayload(body) {
 
   const customerName = String(customer.name || "").trim();
   const customerEmail = String(customer.email || "").trim();
+  const customerPhone = String(customer.phone || "").trim();
   const customerAddress = String(customer.address || "").trim();
 
-  if (!customerName || !customerEmail || !customerAddress) {
-    throw new Error("customer.name, customer.email and customer.address are required");
+  if (!customerName || !customerEmail || !customerPhone || !customerAddress) {
+    throw new Error("customer.name, customer.email, customer.phone and customer.address are required");
   }
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -90,13 +92,14 @@ function validateOrderPayload(body) {
   return {
     customerName,
     customerEmail,
+    customerPhone,
     customerAddress,
     items
   };
 }
 
 async function createOrderInDb(payload) {
-  const { customerName, customerEmail, customerAddress, items } = payload;
+  const { customerName, customerEmail, customerPhone, customerAddress, items } = payload;
   await ensureSeedFlowers();
 
   const flowerRows = await dbRequest({
@@ -175,6 +178,7 @@ async function createOrderInDb(payload) {
       id: orderId,
       customer_name: customerName,
       customer_email: customerEmail,
+      customer_phone: customerPhone,
       customer_address: customerAddress,
       total,
       created_at: new Date().toISOString()
@@ -200,6 +204,7 @@ async function createOrderInDb(payload) {
     customer: {
       name: customerName,
       email: customerEmail,
+      phone: customerPhone,
       address: customerAddress
     },
     items: normalizedItems,
@@ -209,7 +214,7 @@ async function createOrderInDb(payload) {
 }
 
 function createOrderInMemory(payload) {
-  const { customerName, customerEmail, customerAddress, items } = payload;
+  const { customerName, customerEmail, customerPhone, customerAddress, items } = payload;
   const store = getStore();
   const flowerMap = new Map(store.flowers.map((flower) => [flower.id, flower]));
   const normalizedItems = [];
@@ -258,6 +263,7 @@ function createOrderInMemory(payload) {
     customer: {
       name: customerName,
       email: customerEmail,
+      phone: customerPhone,
       address: customerAddress
     },
     items: normalizedItems,
@@ -319,4 +325,3 @@ module.exports = async function handler(req, res) {
     return json(res, 500, { message: error.message || "internal server error" });
   }
 };
-

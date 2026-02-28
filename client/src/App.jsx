@@ -29,6 +29,7 @@ const initialFlowerForm = {
 const initialCheckoutForm = {
   name: "",
   email: "",
+  phone: "",
   address: ""
 };
 
@@ -57,6 +58,7 @@ const occasionTabs = [
   { label: "General", value: "general" }
 ];
 const PAYPAL_ME_URL = "https://paypal.me/AnasZaami";
+const WHATSAPP_CHAT_URL = "https://wa.me/212775094615";
 const marqueeHighlights = [
   "Same-day delivery",
   "Premium quality",
@@ -723,6 +725,7 @@ export default function App() {
     if (
       !checkoutForm.name.trim() ||
       !checkoutForm.email.trim() ||
+      !checkoutForm.phone.trim() ||
       !checkoutForm.address.trim()
     ) {
       showToast("Complete customer details before checkout.");
@@ -735,6 +738,7 @@ export default function App() {
         customer: {
           name: checkoutForm.name.trim(),
           email: checkoutForm.email.trim(),
+          phone: checkoutForm.phone.trim(),
           address: checkoutForm.address.trim()
         },
         paymentMethod,
@@ -903,7 +907,7 @@ export default function App() {
               About Us
             </button>
             <a
-              href="https://www.instagram.com/yanasstack/"
+              href={WHATSAPP_CHAT_URL}
               target="_blank"
               rel="noreferrer"
               onClick={() => setMenuOpen(false)}
@@ -1164,9 +1168,9 @@ export default function App() {
             </article>
             <article className="about-card">
               <h3>Contact</h3>
-              <p>For custom requests and updates, contact us on Instagram.</p>
-              <a className="btn-ghost about-link" href="https://www.instagram.com/yanasstack/" target="_blank" rel="noreferrer">
-                @flyethr
+              <p>For custom requests and updates, chat with us on WhatsApp.</p>
+              <a className="btn-ghost about-link" href={WHATSAPP_CHAT_URL} target="_blank" rel="noreferrer">
+                WhatsApp Chat
               </a>
             </article>
           </div>
@@ -1378,6 +1382,7 @@ export default function App() {
                         <div>
                           <strong>#{order.id}</strong>
                           <p>{order.customer.name}</p>
+                          {order.customer.phone ? <p className="order-contact">{order.customer.phone}</p> : null}
                         </div>
                         <div className="order-total">{formatCurrency(order.total)}</div>
                       </div>
@@ -1513,6 +1518,19 @@ export default function App() {
                       setCheckoutForm((previous) => ({
                         ...previous,
                         email: event.target.value
+                      }))
+                    }
+                    required
+                  />
+                  <input
+                    placeholder="Phone number"
+                    type="tel"
+                    inputMode="tel"
+                    value={checkoutForm.phone}
+                    onChange={(event) =>
+                      setCheckoutForm((previous) => ({
+                        ...previous,
+                        phone: event.target.value
                       }))
                     }
                     required
