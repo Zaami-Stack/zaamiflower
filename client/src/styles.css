@@ -168,6 +168,7 @@ main {
 
 .btn-ghost.small {
   padding: 8px 14px;
+  min-height: 40px;
 }
 
 .cart-btn {
@@ -181,6 +182,9 @@ main {
   font-size: 12px;
   letter-spacing: 1px;
   text-transform: uppercase;
+  min-height: 40px;
+  border-radius: 2px;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -251,14 +255,29 @@ main {
 
 .hero-right {
   position: relative;
+  overflow: hidden;
   background: linear-gradient(145deg, #dbc9bb 0%, #cfb09f 52%, #c19585 100%);
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transform: scale(1.03);
+  filter: saturate(0.92) contrast(1.03);
 }
 
 .hero-right::before {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 1;
   background:
+    linear-gradient(130deg, rgba(26, 23, 20, 0.18), rgba(26, 23, 20, 0.06)),
     radial-gradient(circle at 24% 30%, rgba(255, 255, 255, 0.2), transparent 55%),
     radial-gradient(circle at 74% 74%, rgba(255, 255, 255, 0.16), transparent 45%);
 }
@@ -267,6 +286,7 @@ main {
   position: absolute;
   left: 32px;
   bottom: 40px;
+  z-index: 2;
   background: #ffffff;
   padding: 22px 26px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.13);
@@ -949,7 +969,14 @@ textarea:focus {
   .nav-actions {
     margin-left: auto;
     width: 100%;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .nav-actions .btn-ghost.small {
+    width: 100%;
   }
 
   .hero {
@@ -992,11 +1019,54 @@ textarea:focus {
 @media (max-width: 680px) {
   .session-box {
     max-width: 100%;
-    flex-wrap: wrap;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "email role"
+      "logout logout";
+    gap: 6px 8px;
+    padding: 8px 10px;
+  }
+
+  .session-email {
+    grid-area: email;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .session-role {
+    grid-area: role;
+    justify-self: end;
+  }
+
+  .session-box .btn-ghost.small {
+    grid-area: logout;
+    width: 100%;
+    padding: 9px 10px;
+  }
+
+  .nav-actions {
+    gap: 8px;
+  }
+
+  .nav-actions .btn-ghost.small {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 12px;
   }
 
   .cart-btn {
-    padding: 8px 12px;
+    min-height: 42px;
+    padding: 10px 12px;
+  }
+
+  .cart-count {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
   }
 
   .section {

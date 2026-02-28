@@ -570,6 +570,12 @@ export default function App() {
           </div>
         </div>
         <div className="hero-right">
+          <img
+            className="hero-image"
+            src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=80"
+            alt="Fresh bouquet arrangement"
+            loading="lazy"
+          />
           <div className="hero-badge">
             <div className="hero-number">{flowers.length}</div>
             <div className="hero-label">Flower Types Available</div>
