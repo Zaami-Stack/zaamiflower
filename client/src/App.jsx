@@ -46,6 +46,7 @@ const occasionTabs = [
   { label: "Thank You", value: "thank-you" },
   { label: "General", value: "general" }
 ];
+const PAYPAL_ME_URL = "https://paypal.me/AnasZaami";
 
 function currency(value) {
   return new Intl.NumberFormat("en-US", {
@@ -136,6 +137,7 @@ export default function App() {
   const [signupForm, setSignupForm] = useState(initialSignupForm);
   const [flowerForm, setFlowerForm] = useState(initialFlowerForm);
   const [checkoutForm, setCheckoutForm] = useState(initialCheckoutForm);
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [toast, setToast] = useState("");
 
   const isAdmin = user?.role === "admin";
@@ -178,6 +180,11 @@ export default function App() {
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cartItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  const paypalCheckoutUrl = useMemo(() => {
+    const normalizedBase = PAYPAL_ME_URL.replace(/\/+$/, "");
+    const amount = Number(cartTotal.toFixed(2));
+    return amount > 0 ? `${normalizedBase}/${amount.toFixed(2)}` : normalizedBase;
+  }, [cartTotal]);
 
   const dashboardStats = useMemo(() => {
     const revenue = orders.reduce((sum, order) => sum + float(order.total), 0);
@@ -428,6 +435,7 @@ export default function App() {
           email: checkoutForm.email.trim(),
           address: checkoutForm.address.trim()
         },
+        paymentMethod,
         items: cartItems.map((item) => ({
           flowerId: item.flowerId,
           quantity: item.quantity
@@ -439,7 +447,12 @@ export default function App() {
         ...initialCheckoutForm,
         email: user?.email || ""
       }));
-      showToast("Order placed successfully.");
+      setPaymentMethod("cash");
+      showToast(
+        paymentMethod === "paypal"
+          ? "Order placed. Complete the payment in PayPal."
+          : "Order placed successfully."
+      );
       refreshFlowers();
       if (isAdmin) {
         refreshOrders();
@@ -937,8 +950,45 @@ export default function App() {
                   }
                   required
                 />
+                <div className="payment-method">
+                  <span className="payment-label">Payment</span>
+                  <label>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="cash"
+                      checked={paymentMethod === "cash"}
+                      onChange={(event) => setPaymentMethod(event.target.value)}
+                    />
+                    Cash on Delivery
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="paypal"
+                      checked={paymentMethod === "paypal"}
+                      onChange={(event) => setPaymentMethod(event.target.value)}
+                    />
+                    PayPal
+                  </label>
+                </div>
+                {paymentMethod === "paypal" ? (
+                  <a
+                    className="btn-primary paypal-link"
+                    href={paypalCheckoutUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Pay with PayPal
+                  </a>
+                ) : null}
                 <button className="btn-primary" type="submit" disabled={submittingOrder}>
-                  {submittingOrder ? "Placing..." : "Place Order"}
+                  {submittingOrder
+                    ? "Placing..."
+                    : paymentMethod === "paypal"
+                      ? "Place Order (PayPal selected)"
+                      : "Place Order"}
                 </button>
               </form>
             )}
