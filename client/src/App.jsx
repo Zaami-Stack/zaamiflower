@@ -566,6 +566,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const poll = setInterval(() => {
+      refreshNotifications();
+    }, 20000);
+
+    return () => clearInterval(poll);
+  }, []);
+
+  useEffect(() => {
     refreshOrders();
   }, [isAdmin]);
 
@@ -1016,20 +1024,37 @@ export default function App() {
       </div>
 
       <main>
-        {!notificationsLoading && !notificationsError && latestNotification ? (
-          <section className="promo-highlight">
-            <p className="promo-highlight-tag">Latest Promo</p>
-            <div className="promo-highlight-main">
-              <div>
-                <h3>{latestNotification.title}</h3>
-                {latestNotification.message ? <p>{latestNotification.message}</p> : null}
-              </div>
+        <section className="promo-highlight" aria-live="polite">
+          <p className="promo-highlight-tag">Promotions</p>
+          <div className="promo-highlight-main">
+            <div>
+              <h3>
+                {notificationsLoading
+                  ? "Loading promotions..."
+                  : latestNotification
+                    ? latestNotification.title
+                    : "No active promotions right now"}
+              </h3>
+              {latestNotification?.message ? (
+                <p>{latestNotification.message}</p>
+              ) : (
+                <p className="promo-highlight-note">
+                  {notificationsError
+                    ? "Promotions are unavailable right now. Try refreshing in a moment."
+                    : "New discounts and offers will appear here."}
+                </p>
+              )}
+            </div>
+            <div className="promo-highlight-actions">
+              <button className="btn-ghost small" type="button" onClick={refreshNotifications}>
+                Refresh
+              </button>
               <button className="btn-ghost small" type="button" onClick={toggleNotifications}>
                 See All
               </button>
             </div>
-          </section>
-        ) : null}
+          </div>
+        </section>
 
         <section className="section scroll-section">
           <div className="section-header">

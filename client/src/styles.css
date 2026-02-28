@@ -85,6 +85,12 @@ main {
   gap: 12px;
 }
 
+.promo-highlight-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .promo-highlight h3 {
   margin: 0;
   font-family: "Cormorant Garamond", serif;
@@ -96,6 +102,10 @@ main {
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 14px;
+}
+
+.promo-highlight-note {
+  font-style: italic;
 }
 
 .top-nav {
@@ -1628,6 +1638,16 @@ textarea:focus {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+  }
+
+  .promo-highlight-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .promo-highlight-actions .btn-ghost.small {
+    width: 100%;
   }
 
   .hero-left {
