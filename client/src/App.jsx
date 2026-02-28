@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { gsap } from "gsap";
 import {
   createFlower,
   createOrder,
@@ -110,7 +111,14 @@ function FlowerCard({ flower, onAdd }) {
 }
 
 export default function App() {
-  const [activePage, setActivePage] = useState("home");
+  const homeRef = useRef(null);
+  const shopRef = useRef(null);
+  const aboutRef = useRef(null);
+  const adminRef = useRef(null);
+  const heroRef = useRef(null);
+  const featuredGridRef = useRef(null);
+  const shopGridRef = useRef(null);
+
   const [flowers, setFlowers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState({});
@@ -133,7 +141,7 @@ export default function App() {
   const isAdmin = user?.role === "admin";
   const canCheckout = user?.role === "admin" || user?.role === "customer";
 
-  const featuredFlowers = useMemo(() => flowers.slice(0, 4), [flowers]);
+  const featuredFlowers = useMemo(() => flowers.slice(0, 6), [flowers]);
 
   const visibleFlowers = useMemo(() => {
     const searchQuery = normalizedText(search);
@@ -173,18 +181,23 @@ export default function App() {
 
   const dashboardStats = useMemo(() => {
     const revenue = orders.reduce((sum, order) => sum + float(order.total), 0);
-    const stockTotal = flowers.reduce((sum, flower) => sum + Number(flower.stock || 0), 0);
     const lowStock = flowers.filter((flower) => Number(flower.stock || 0) < 5).length;
     return {
       revenue,
       orderCount: orders.length,
-      stockTotal,
       lowStock
     };
   }, [orders, flowers]);
 
   const showToast = (message) => {
     setToast(message);
+  };
+
+  const scrollToSection = (ref) => {
+    ref.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
   };
 
   useEffect(() => {
@@ -195,6 +208,49 @@ export default function App() {
     const timeout = setTimeout(() => setToast(""), 2600);
     return () => clearTimeout(timeout);
   }, [toast]);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      if (!heroRef.current) {
+        return;
+      }
+      gsap.fromTo(
+        heroRef.current.querySelectorAll(".hero-tag, .hero-title, .hero-desc, .hero-cta"),
+        { y: 24, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.9,
+          stagger: 0.1,
+          ease: "power3.out"
+        }
+      );
+    });
+
+    return () => ctx.revert();
+  }, []);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      if (featuredGridRef.current) {
+        gsap.fromTo(
+          featuredGridRef.current.querySelectorAll(".product-card"),
+          { y: 18, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: "power2.out" }
+        );
+      }
+
+      if (shopGridRef.current) {
+        gsap.fromTo(
+          shopGridRef.current.querySelectorAll(".product-card"),
+          { y: 14, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.45, stagger: 0.05, ease: "power2.out" }
+        );
+      }
+    });
+
+    return () => ctx.revert();
+  }, [featuredFlowers.length, visibleFlowers.length, occasionFilter, search]);
 
   const refreshSession = async () => {
     setSessionLoading(true);
@@ -254,12 +310,6 @@ export default function App() {
       email: previous.email || user.email
     }));
   }, [user]);
-
-  useEffect(() => {
-    if (activePage === "admin" && !isAdmin) {
-      setActivePage("home");
-    }
-  }, [activePage, isAdmin]);
 
   const openAuth = (mode = "login") => {
     setAuthMode(mode);
@@ -446,19 +496,25 @@ export default function App() {
   return (
     <div className="site-shell">
       <nav className="top-nav">
-        <button className="logo" type="button" onClick={() => setActivePage("home")}>
+        <button className="logo" type="button" onClick={() => scrollToSection(homeRef)}>
           Bl<span>oo</span>m
         </button>
 
         <div className="nav-links">
-          <button type="button" onClick={() => setActivePage("home")}>
+          <button type="button" onClick={() => scrollToSection(homeRef)}>
             Home
           </button>
-          <button type="button" onClick={() => setActivePage("shop")}>
+          <button type="button" onClick={() => scrollToSection(shopRef)}>
             Shop
           </button>
+          <button type="button" onClick={() => scrollToSection(aboutRef)}>
+            About Us
+          </button>
+          <a href="https://instagram.com/flyethr" target="_blank" rel="noreferrer">
+            Contact
+          </a>
           {isAdmin ? (
-            <button type="button" onClick={() => setActivePage("admin")}>
+            <button type="button" onClick={() => scrollToSection(adminRef)}>
               Admin
             </button>
           ) : null}
@@ -488,40 +544,38 @@ export default function App() {
         </div>
       </nav>
 
-      {activePage === "home" ? (
-        <section className="hero">
-          <div className="hero-left">
-            <p className="hero-tag">Spring 2026 Collection</p>
-            <h1 className="hero-title">
-              Where <em>flowers</em> tell your story
-            </h1>
-            <p className="hero-desc">
-              Handcrafted bouquets, seasonal arrangements, and living gifts sourced and
-              designed with care.
-            </p>
-            <div className="hero-cta">
-              <button className="btn-primary" type="button" onClick={() => setActivePage("shop")}>
-                Shop Collection
+      <section className="hero scroll-section" ref={homeRef}>
+        <div className="hero-left" ref={heroRef}>
+          <p className="hero-tag">Spring 2026 Collection</p>
+          <h1 className="hero-title">
+            Where <em>flowers</em> tell your story
+          </h1>
+          <p className="hero-desc">
+            Handcrafted bouquets, seasonal arrangements, and living gifts sourced and designed
+            with care.
+          </p>
+          <div className="hero-cta">
+            <button className="btn-primary" type="button" onClick={() => scrollToSection(shopRef)}>
+              Shop Collection
+            </button>
+            {isAdmin ? (
+              <button className="btn-ghost" type="button" onClick={() => scrollToSection(adminRef)}>
+                Dashboard
               </button>
-              {isAdmin ? (
-                <button className="btn-ghost" type="button" onClick={() => setActivePage("admin")}>
-                  Dashboard
-                </button>
-              ) : (
-                <button className="btn-ghost" type="button" onClick={() => openAuth("signup")}>
-                  Create Account
-                </button>
-              )}
-            </div>
+            ) : (
+              <button className="btn-ghost" type="button" onClick={() => openAuth("signup")}>
+                Create Account
+              </button>
+            )}
           </div>
-          <div className="hero-right">
-            <div className="hero-badge">
-              <div className="hero-number">{flowers.length}</div>
-              <div className="hero-label">Flower Types Available</div>
-            </div>
+        </div>
+        <div className="hero-right">
+          <div className="hero-badge">
+            <div className="hero-number">{flowers.length}</div>
+            <div className="hero-label">Flower Types Available</div>
           </div>
-        </section>
-      ) : null}
+        </div>
+      </section>
 
       <div className="marquee-wrap">
         <div className="marquee-inner">
@@ -539,72 +593,98 @@ export default function App() {
       </div>
 
       <main>
-        {activePage === "home" ? (
-          <section className="section">
-            <div className="section-header">
-              <h2 className="section-title">
-                Featured <em>Arrangements</em>
-              </h2>
-              <button className="view-all" type="button" onClick={() => setActivePage("shop")}>
-                View All
+        <section className="section scroll-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              Featured <em>Arrangements</em>
+            </h2>
+            <button className="view-all" type="button" onClick={() => scrollToSection(shopRef)}>
+              View All
+            </button>
+          </div>
+
+          {loadingFlowers ? <p className="loading-note">Loading flowers...</p> : null}
+
+          <div className="products-grid featured-grid" ref={featuredGridRef}>
+            {featuredFlowers.map((flower) => (
+              <FlowerCard key={flower.id} flower={flower} onAdd={addToCart} />
+            ))}
+          </div>
+        </section>
+
+        <section className="section shop-section scroll-section" ref={shopRef}>
+          <div className="section-header">
+            <h2 className="section-title">
+              Our <em>Collection</em>
+            </h2>
+          </div>
+
+          <div className="search-bar">
+            <input
+              type="text"
+              placeholder="Search flowers and arrangements..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+
+          <div className="filter-tabs">
+            {occasionTabs.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                className={`filter-tab ${occasionFilter === tab.value ? "active" : ""}`}
+                onClick={() => setOccasionFilter(tab.value)}
+              >
+                {tab.label}
               </button>
-            </div>
+            ))}
+          </div>
 
-            {loadingFlowers ? <p className="loading-note">Loading flowers...</p> : null}
+          {loadingFlowers ? <p className="loading-note">Loading flowers...</p> : null}
+          {!loadingFlowers && visibleFlowers.length === 0 ? (
+            <p className="loading-note">No flowers match your search.</p>
+          ) : null}
 
-            <div className="products-grid">
-              {featuredFlowers.map((flower) => (
-                <FlowerCard key={flower.id} flower={flower} onAdd={addToCart} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+          <div className="products-grid shop-grid" ref={shopGridRef}>
+            {visibleFlowers.map((flower) => (
+              <FlowerCard key={flower.id} flower={flower} onAdd={addToCart} />
+            ))}
+          </div>
+        </section>
 
-        {activePage === "shop" ? (
-          <section className="section shop-section">
-            <div className="section-header">
-              <h2 className="section-title">
-                Our <em>Collection</em>
-              </h2>
-            </div>
+        <section className="section about-section scroll-section" ref={aboutRef}>
+          <div className="section-header">
+            <h2 className="section-title">
+              About <em>Bloom</em>
+            </h2>
+          </div>
+          <div className="about-grid">
+            <article className="about-card">
+              <h3>Crafted With Care</h3>
+              <p>
+                We build modern floral arrangements for birthdays, romance, weddings, and daily
+                gifts.
+              </p>
+            </article>
+            <article className="about-card">
+              <h3>Fresh Every Day</h3>
+              <p>
+                Bouquets are prepared from fresh seasonal flowers with clean, elegant styling.
+              </p>
+            </article>
+            <article className="about-card">
+              <h3>Contact</h3>
+              <p>For custom requests and updates, contact us on Instagram.</p>
+              <a className="btn-ghost about-link" href="https://instagram.com/flyethr" target="_blank" rel="noreferrer">
+                @flyethr
+              </a>
+            </article>
+          </div>
+        </section>
 
-            <div className="search-bar">
-              <input
-                type="text"
-                placeholder="Search flowers and arrangements..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-
-            <div className="filter-tabs">
-              {occasionTabs.map((tab) => (
-                <button
-                  key={tab.value}
-                  type="button"
-                  className={`filter-tab ${occasionFilter === tab.value ? "active" : ""}`}
-                  onClick={() => setOccasionFilter(tab.value)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {loadingFlowers ? <p className="loading-note">Loading flowers...</p> : null}
-            {!loadingFlowers && visibleFlowers.length === 0 ? (
-              <p className="loading-note">No flowers match your search.</p>
-            ) : null}
-
-            <div className="products-grid">
-              {visibleFlowers.map((flower) => (
-                <FlowerCard key={flower.id} flower={flower} onAdd={addToCart} />
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {activePage === "admin" && isAdmin ? (
-          <section className="section admin-section">
+        {isAdmin ? (
+          <section className="section admin-section scroll-section" ref={adminRef}>
             <div className="section-header">
               <h2 className="section-title">
                 Admin <em>Dashboard</em>
