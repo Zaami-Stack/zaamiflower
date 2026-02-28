@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gsap } from "gsap";
+import Lenis from "lenis";
 import {
   createFlower,
   createOrder,
@@ -134,6 +135,7 @@ export default function App() {
   const heroRef = useRef(null);
   const featuredGridRef = useRef(null);
   const shopGridRef = useRef(null);
+  const lenisRef = useRef(null);
 
   const [flowers, setFlowers] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -227,7 +229,19 @@ export default function App() {
   };
 
   const scrollToSection = (ref) => {
-    ref.current?.scrollIntoView({
+    if (!ref.current) {
+      return;
+    }
+
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(ref.current, {
+        offset: -96,
+        duration: 1.1
+      });
+      return;
+    }
+
+    ref.current.scrollIntoView({
       behavior: "smooth",
       block: "start"
     });
@@ -251,6 +265,32 @@ export default function App() {
     const timeout = setTimeout(() => setToast(""), 2600);
     return () => clearTimeout(timeout);
   }, [toast]);
+
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.05,
+      smoothWheel: true,
+      wheelMultiplier: 0.9,
+      touchMultiplier: 1.1,
+      easing: (t) => 1 - Math.pow(1 - t, 4)
+    });
+
+    lenisRef.current = lenis;
+
+    let frame = 0;
+    const tick = (time) => {
+      lenis.raf(time);
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    frame = window.requestAnimationFrame(tick);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
