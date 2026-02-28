@@ -54,13 +54,21 @@ const marqueeHighlights = [
   "Custom arrangements",
   "Secure checkout"
 ];
-
-function currency(value) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD"
-  }).format(value);
-}
+const USD_TO_MAD_RATE = 10;
+const currencyOptions = {
+  USD: {
+    label: "USD ($)",
+    locale: "en-US",
+    currency: "USD",
+    rate: 1
+  },
+  MAD: {
+    label: "MAD (DH)",
+    locale: "fr-MA",
+    currency: "MAD",
+    rate: USD_TO_MAD_RATE
+  }
+};
 
 function float(value) {
   const number = Number(value);
@@ -82,7 +90,7 @@ function iconForOccasion(occasion) {
   return map[occasion] || "F";
 }
 
-function FlowerCard({ flower, onAdd }) {
+function FlowerCard({ flower, onAdd, formatCurrency }) {
   const hasImage = Boolean(flower.image);
   return (
     <article className="product-card">
@@ -103,7 +111,7 @@ function FlowerCard({ flower, onAdd }) {
         <h3 className="product-name">{flower.name}</h3>
         <p className="product-desc">{flower.description || "Seasonal fresh floral arrangement."}</p>
         <div className="product-footer">
-          <div className="product-price">{currency(flower.price)}</div>
+          <div className="product-price">{formatCurrency(flower.price)}</div>
           <button
             className="add-btn"
             type="button"
@@ -146,6 +154,7 @@ export default function App() {
   const [flowerForm, setFlowerForm] = useState(initialFlowerForm);
   const [checkoutForm, setCheckoutForm] = useState(initialCheckoutForm);
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [currencyCode, setCurrencyCode] = useState("USD");
   const [toast, setToast] = useState("");
 
   const isAdmin = user?.role === "admin";
@@ -188,6 +197,15 @@ export default function App() {
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cartItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  const formatCurrency = useMemo(() => {
+    const selected = currencyOptions[currencyCode] || currencyOptions.USD;
+    const formatter = new Intl.NumberFormat(selected.locale, {
+      style: "currency",
+      currency: selected.currency
+    });
+
+    return (value) => formatter.format(float(value) * selected.rate);
+  }, [currencyCode]);
   const paypalCheckoutUrl = useMemo(() => {
     const normalizedBase = PAYPAL_ME_URL.replace(/\/+$/, "");
     const amount = Number(cartTotal.toFixed(2));
@@ -583,6 +601,21 @@ export default function App() {
           </div>
 
           <div className="nav-actions">
+            <label className="currency-switch" htmlFor="currency-select">
+              <span>Currency</span>
+              <select
+                id="currency-select"
+                value={currencyCode}
+                onChange={(event) => setCurrencyCode(event.target.value)}
+              >
+                {Object.entries(currencyOptions).map(([code, option]) => (
+                  <option key={code} value={code}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             {sessionLoading ? (
               <span className="session-note">Checking session...</span>
             ) : user ? (
@@ -687,7 +720,12 @@ export default function App() {
 
           <div className="products-grid featured-grid" ref={featuredGridRef}>
             {featuredFlowers.map((flower) => (
-              <FlowerCard key={flower.id} flower={flower} onAdd={addToCart} />
+              <FlowerCard
+                key={flower.id}
+                flower={flower}
+                onAdd={addToCart}
+                formatCurrency={formatCurrency}
+              />
             ))}
           </div>
         </section>
@@ -728,7 +766,12 @@ export default function App() {
 
           <div className="products-grid shop-grid" ref={shopGridRef}>
             {visibleFlowers.map((flower) => (
-              <FlowerCard key={flower.id} flower={flower} onAdd={addToCart} />
+              <FlowerCard
+                key={flower.id}
+                flower={flower}
+                onAdd={addToCart}
+                formatCurrency={formatCurrency}
+              />
             ))}
           </div>
         </section>
@@ -774,7 +817,7 @@ export default function App() {
             <>
               <div className="stats-grid">
                 <div className="stat-card">
-                  <div className="stat-value">{currency(dashboardStats.revenue)}</div>
+                  <div className="stat-value">{formatCurrency(dashboardStats.revenue)}</div>
                   <div className="stat-label">Revenue</div>
                 </div>
                 <div className="stat-card">
@@ -810,7 +853,7 @@ export default function App() {
                           <tr key={flower.id}>
                             <td>{flower.name}</td>
                             <td>{flower.occasion}</td>
-                            <td>{currency(flower.price)}</td>
+                            <td>{formatCurrency(flower.price)}</td>
                             <td>{flower.stock}</td>
                             <td className="table-action-cell">
                               <button
@@ -921,7 +964,7 @@ export default function App() {
                           <strong>#{order.id}</strong>
                           <p>{order.customer.name}</p>
                         </div>
-                        <div className="order-total">{currency(order.total)}</div>
+                        <div className="order-total">{formatCurrency(order.total)}</div>
                       </div>
                     ))}
                   </div>
@@ -970,9 +1013,9 @@ export default function App() {
                       <div className="cart-item-content">
                         <div className="cart-item-main">
                           <div className="cart-item-name">{item.flower.name}</div>
-                          <div className="cart-item-price">{currency(item.lineTotal)}</div>
+                          <div className="cart-item-price">{formatCurrency(item.lineTotal)}</div>
                         </div>
-                        <div className="cart-item-subline">{currency(item.flower.price)} each</div>
+                        <div className="cart-item-subline">{formatCurrency(item.flower.price)} each</div>
                         <div className="cart-qty">
                           <button type="button" onClick={() => adjustCart(item.flower, -1)}>
                             -
@@ -992,7 +1035,7 @@ export default function App() {
             <section className="cart-checkout-panel">
               <div className="cart-total">
                 <span>Total</span>
-                <strong>{currency(cartTotal)}</strong>
+                <strong>{formatCurrency(cartTotal)}</strong>
               </div>
 
               {!canCheckout ? (
