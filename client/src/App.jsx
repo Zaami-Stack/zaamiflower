@@ -599,8 +599,8 @@ export default function App() {
               </button>
             )}
 
-            <button className="cart-btn" type="button" onClick={openCart}>
-              Cart
+            <button className="cart-btn" type="button" aria-label="Open cart" onClick={openCart}>
+              <img className="cart-icon" src="/bag.svg" alt="" aria-hidden="true" />
               <span className="cart-count">{cartCount}</span>
             </button>
           </div>
