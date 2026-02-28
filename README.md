@@ -1,93 +1,38 @@
-# Full-Stack Flower Shop (Free Stack)
+# Full-Stack Flower Shop (Free Deploy)
 
-A complete full-stack flower shop project built with only free tools.
-It is prepared for single-service free deployment on Render.
+Deploy-ready flower shop project with:
 
 - Frontend: React + Vite
-- Backend: Node.js + Express
-- Data: Local JSON file (no paid database)
+- API: Node serverless functions (`/api/*`)
+- Local dev backend: Express (`server/`)
 
-## Features
-
-- Browse flower catalog
-- Search and filter by occasion/price
-- Add items to cart
-- Place orders (stock updates automatically)
-- Add new flowers from an admin form
-- View recent orders
-
-## Project Structure
-
-```text
-.
-|- client/   # React frontend
-|- server/   # Express backend
-`- package.json
-```
-
-## Prerequisites
-
-- Node.js 18+
-- npm 9+
-
-## Quick Start
-
-1. Install root tooling:
+## Quick Start (Local)
 
 ```bash
 npm install
-```
-
-2. Install app dependencies:
-
-```bash
 npm run install:all
-```
-
-3. Run both frontend and backend in development:
-
-```bash
 npm run dev
 ```
 
-4. Open:
+Open:
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:4000/api/health
+- Frontend: `http://localhost:5173`
+- Local API health: `http://localhost:4000/api/health`
 
-## Free Online Deployment (Render)
+## Deploy Online Free (No Render Card Flow)
 
-`render.yaml` is included, so the project is ready for deployment.
+This repo is configured for **Vercel** with `vercel.json`.
 
-1. Push this folder to a GitHub repository.
-2. In Render, choose `New +` -> `Blueprint`.
-3. Select your GitHub repo and deploy.
-4. After deploy completes, open your Render URL.
+1. Push to GitHub (already done in your repo `zaamiflower`).
+2. Go to Vercel and import the GitHub repo.
+3. Click Deploy (no extra config needed).
 
-Render will run:
+Vercel uses:
 
-- Build: `npm install && npm run install:all && npm run build`
-- Start: `npm start`
-
-Health check endpoint:
-
-- `/api/health`
-
-## Environment Variables
-
-### Server (`server/.env`)
-
-```bash
-PORT=4000
-```
-
-### Client (`client/.env`)
-
-```bash
-VITE_API_URL=/api
-```
-
-If `VITE_API_URL` is omitted, the client defaults to `/api` and uses Vite proxy.
+- Install: `npm install && npm install --prefix client`
+- Build: `npm run build --prefix client`
+- Output: `client/dist`
+- API functions: `api/*.js`
 
 ## API Endpoints
 
@@ -97,8 +42,7 @@ If `VITE_API_URL` is omitted, the client defaults to `/api` and uses Vite proxy.
 - `GET /api/orders`
 - `POST /api/orders`
 
-## Notes
+## Important Free-Tier Note
 
-- Data is stored in `server/src/data/store.json`.
-- On free hosting, file-based data may reset when the service restarts or redeploys.
-- For persistent production data, connect a free hosted database.
+The Vercel API store is in-memory (`api/_store.js`), so data can reset on cold starts/redeploys.
+For persistent data, connect a free hosted database.
