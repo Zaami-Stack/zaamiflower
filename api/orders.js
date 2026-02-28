@@ -1,4 +1,5 @@
 const { createId, getStore } = require("./_store");
+const { requireRole } = require("./_auth");
 const { json, methodNotAllowed, readJsonBody } = require("./_utils");
 
 function listOrders(_req, res) {
@@ -98,13 +99,20 @@ async function createOrder(req, res) {
 
 module.exports = async function handler(req, res) {
   if (req.method === "GET") {
+    const user = requireRole(req, res, ["admin"]);
+    if (!user) {
+      return;
+    }
     return listOrders(req, res);
   }
 
   if (req.method === "POST") {
+    const user = requireRole(req, res, ["admin", "customer"]);
+    if (!user) {
+      return;
+    }
     return createOrder(req, res);
   }
 
   return methodNotAllowed(res, ["GET", "POST"]);
 };
-

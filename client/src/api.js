@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {})
@@ -47,5 +48,30 @@ function createOrder(payload) {
   });
 }
 
-export { createFlower, createOrder, getFlowers, getOrders };
+function getSession() {
+  return request("/auth/me");
+}
 
+function login(payload) {
+  return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+function logout() {
+  return request("/auth/logout", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export {
+  createFlower,
+  createOrder,
+  getFlowers,
+  getOrders,
+  getSession,
+  login,
+  logout
+};

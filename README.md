@@ -1,6 +1,6 @@
 # Full-Stack Flower Shop (Free Deploy)
 
-Deploy-ready flower shop project with:
+Deploy-ready flower shop project with role-based auth:
 
 - Frontend: React + Vite
 - API: Node serverless functions (`/api/*`)
@@ -34,13 +34,39 @@ Vercel uses:
 - Output: `client/dist`
 - API functions: `api/*.js`
 
+## Roles And Security
+
+- `admin` can add flowers and view all orders.
+- `customer` can place orders.
+- guests can only browse flowers.
+
+Server-side checks are enforced in API routes, not only in UI.
+
+## Required Vercel Environment Variables
+
+Set these in Vercel Project Settings -> Environment Variables:
+
+- `AUTH_SECRET`: strong random string, at least 24 chars
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+
+Optional customer login:
+
+- `CUSTOMER_EMAIL`
+- `CUSTOMER_PASSWORD`
+
+If auth variables are missing, login and protected routes return configuration errors.
+
 ## API Endpoints
 
 - `GET /api/health`
 - `GET /api/flowers?search=&occasion=&maxPrice=`
-- `POST /api/flowers`
-- `GET /api/orders`
-- `POST /api/orders`
+- `POST /api/flowers` (admin)
+- `GET /api/orders` (admin)
+- `POST /api/orders` (admin or customer)
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
 
 ## Important Free-Tier Note
 

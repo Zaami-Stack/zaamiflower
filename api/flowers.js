@@ -1,4 +1,5 @@
 const { createId, getStore } = require("./_store");
+const { requireRole } = require("./_auth");
 const { json, methodNotAllowed, parseUrl, readJsonBody } = require("./_utils");
 
 function listFlowers(req, res) {
@@ -85,9 +86,12 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "POST") {
+    const user = requireRole(req, res, ["admin"]);
+    if (!user) {
+      return;
+    }
     return createFlower(req, res);
   }
 
   return methodNotAllowed(res, ["GET", "POST"]);
 };
-

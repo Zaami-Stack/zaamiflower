@@ -38,10 +38,29 @@ function parseUrl(req) {
   return new URL(req.url, "https://example.local");
 }
 
+function parseCookies(req) {
+  const header = req.headers?.cookie || "";
+  const entries = header
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const index = part.indexOf("=");
+      if (index === -1) {
+        return [part, ""];
+      }
+      const key = part.slice(0, index).trim();
+      const value = part.slice(index + 1).trim();
+      return [key, decodeURIComponent(value)];
+    });
+
+  return Object.fromEntries(entries);
+}
+
 module.exports = {
   json,
   methodNotAllowed,
+  parseCookies,
   parseUrl,
   readJsonBody
 };
-
