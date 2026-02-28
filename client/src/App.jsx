@@ -497,7 +497,7 @@ export default function App() {
     <div className="site-shell">
       <nav className="top-nav">
         <button className="logo" type="button" onClick={() => scrollToSection(homeRef)}>
-          Bl<span>oo</span>m
+          flyethr
         </button>
 
         <div className="nav-links">
@@ -662,7 +662,7 @@ export default function App() {
         <section className="section about-section scroll-section" ref={aboutRef}>
           <div className="section-header">
             <h2 className="section-title">
-              About <em>Bloom</em>
+              About <em>flyethr</em>
             </h2>
           </div>
           <div className="about-grid">

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: bloom-basket
+    name: flyethr-basket
     runtime: node
     plan: free
     autoDeploy: true
@@ -10,4 +10,3 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-
