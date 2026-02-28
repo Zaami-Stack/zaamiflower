@@ -47,6 +47,13 @@ const occasionTabs = [
   { label: "General", value: "general" }
 ];
 const PAYPAL_ME_URL = "https://paypal.me/AnasZaami";
+const marqueeHighlights = [
+  "Same-day delivery",
+  "Premium quality",
+  "Sustainable sourcing",
+  "Custom arrangements",
+  "Secure checkout"
+];
 
 function currency(value) {
   return new Intl.NumberFormat("en-US", {
@@ -131,6 +138,7 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [loginForm, setLoginForm] = useState(initialLoginForm);
@@ -205,6 +213,16 @@ export default function App() {
       behavior: "smooth",
       block: "start"
     });
+  };
+
+  const navigateToSection = (ref) => {
+    scrollToSection(ref);
+    setMenuOpen(false);
+  };
+
+  const openCart = () => {
+    setCartOpen(true);
+    setMenuOpen(false);
   };
 
   useEffect(() => {
@@ -318,7 +336,19 @@ export default function App() {
     }));
   }, [user]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 980) {
+        setMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const openAuth = (mode = "login") => {
+    setMenuOpen(false);
     setAuthMode(mode);
     setAuthOpen(true);
   };
@@ -401,6 +431,7 @@ export default function App() {
 
     setUser(null);
     setOrders([]);
+    setMenuOpen(false);
     showToast("Logged out.");
   };
 
@@ -509,51 +540,70 @@ export default function App() {
   return (
     <div className="site-shell">
       <nav className="top-nav">
-        <button className="logo" type="button" onClick={() => scrollToSection(homeRef)}>
+        <button className="logo" type="button" onClick={() => navigateToSection(homeRef)}>
           flyethr
         </button>
 
-        <div className="nav-links">
-          <button type="button" onClick={() => scrollToSection(homeRef)}>
-            Home
-          </button>
-          <button type="button" onClick={() => scrollToSection(shopRef)}>
-            Shop
-          </button>
-          <button type="button" onClick={() => scrollToSection(aboutRef)}>
-            About Us
-          </button>
-          <a href="https://instagram.com/flyethr" target="_blank" rel="noreferrer">
-            Contact
-          </a>
-          {isAdmin ? (
-            <button type="button" onClick={() => scrollToSection(adminRef)}>
-              Admin
-            </button>
-          ) : null}
-        </div>
+        <button
+          className={`menu-toggle ${menuOpen ? "open" : ""}`}
+          type="button"
+          aria-label="Toggle menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((previous) => !previous)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
 
-        <div className="nav-actions">
-          {sessionLoading ? (
-            <span className="session-note">Checking session...</span>
-          ) : user ? (
-            <div className="session-box">
-              <span className="session-email">{user.email}</span>
-              <span className="session-role">{user.role}</span>
-              <button className="btn-ghost small" type="button" onClick={handleLogout}>
-                Logout
+        <div className={`nav-menu ${menuOpen ? "open" : ""}`}>
+          <div className="nav-links">
+            <button type="button" onClick={() => navigateToSection(homeRef)}>
+              Home
+            </button>
+            <button type="button" onClick={() => navigateToSection(shopRef)}>
+              Shop
+            </button>
+            <button type="button" onClick={() => navigateToSection(aboutRef)}>
+              About Us
+            </button>
+            <a
+              href="https://instagram.com/flyethr"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMenuOpen(false)}
+            >
+              Contact
+            </a>
+            {isAdmin ? (
+              <button type="button" onClick={() => navigateToSection(adminRef)}>
+                Admin
               </button>
-            </div>
-          ) : (
-            <button className="btn-ghost small" type="button" onClick={() => openAuth("login")}>
-              Sign In
-            </button>
-          )}
+            ) : null}
+          </div>
 
-          <button className="cart-btn" type="button" onClick={() => setCartOpen(true)}>
-            Cart
-            <span className="cart-count">{cartCount}</span>
-          </button>
+          <div className="nav-actions">
+            {sessionLoading ? (
+              <span className="session-note">Checking session...</span>
+            ) : user ? (
+              <div className="session-box">
+                <span className="session-email">{user.email}</span>
+                <span className="session-role">{user.role}</span>
+                <button className="btn-ghost small" type="button" onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button className="btn-ghost small" type="button" onClick={() => openAuth("login")}>
+                Sign In
+              </button>
+            )}
+
+            <button className="cart-btn" type="button" onClick={openCart}>
+              Cart
+              <span className="cart-count">{cartCount}</span>
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -597,17 +647,17 @@ export default function App() {
       </section>
 
       <div className="marquee-wrap">
-        <div className="marquee-inner">
-          <span>Same-day delivery</span>
-          <span>Premium quality</span>
-          <span>Sustainable sourcing</span>
-          <span>Custom arrangements</span>
-          <span>Secure checkout</span>
-          <span>Same-day delivery</span>
-          <span>Premium quality</span>
-          <span>Sustainable sourcing</span>
-          <span>Custom arrangements</span>
-          <span>Secure checkout</span>
+        <div className="marquee-track">
+          <div className="marquee-inner">
+            {marqueeHighlights.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+          <div className="marquee-inner" aria-hidden="true">
+            {marqueeHighlights.map((item) => (
+              <span key={`copy-${item}`}>{item}</span>
+            ))}
+          </div>
         </div>
       </div>
 
