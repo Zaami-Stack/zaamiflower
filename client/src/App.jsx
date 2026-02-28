@@ -568,7 +568,7 @@ export default function App() {
               About Us
             </button>
             <a
-              href="https://instagram.com/flyethr"
+              href="https://www.instagram.com/yanasstack/"
               target="_blank"
               rel="noreferrer"
               onClick={() => setMenuOpen(false)}
@@ -756,7 +756,7 @@ export default function App() {
             <article className="about-card">
               <h3>Contact</h3>
               <p>For custom requests and updates, contact us on Instagram.</p>
-              <a className="btn-ghost about-link" href="https://instagram.com/flyethr" target="_blank" rel="noreferrer">
+              <a className="btn-ghost about-link" href="https://www.instagram.com/yanasstack/" target="_blank" rel="noreferrer">
                 @flyethr
               </a>
             </article>
