@@ -599,9 +599,20 @@ export default function App() {
               </button>
             )}
 
-            <button className="cart-btn" type="button" aria-label="Open cart" onClick={openCart}>
-              <img className="cart-icon" src="/bag.svg" alt="" aria-hidden="true" />
-              <span className="cart-count">{cartCount}</span>
+            <button
+              className="cart-btn"
+              type="button"
+              aria-label={
+                cartCount > 0
+                  ? `Open cart, ${cartCount} item${cartCount === 1 ? "" : "s"}`
+                  : "Open cart"
+              }
+              onClick={openCart}
+            >
+              <span className="cart-icon-wrap">
+                <img className="cart-icon" src="/bag.svg" alt="" aria-hidden="true" />
+                {cartCount > 0 ? <span className="cart-dot" aria-hidden="true" /> : null}
+              </span>
             </button>
           </div>
         </div>
