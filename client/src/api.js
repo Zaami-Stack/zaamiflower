@@ -55,6 +55,25 @@ function createOrder(payload) {
   });
 }
 
+function getNotifications(limit = 20) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return request(`/notifications?${params.toString()}`);
+}
+
+function createNotification(payload) {
+  return request("/notifications", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+function deleteNotification(notificationId) {
+  const params = new URLSearchParams({ id: notificationId });
+  return request(`/notifications?${params.toString()}`, {
+    method: "DELETE"
+  });
+}
+
 function getSession() {
   return request("/auth/me");
 }
@@ -84,10 +103,13 @@ export {
   createFlower,
   deleteFlower,
   createOrder,
+  createNotification,
   getFlowers,
+  getNotifications,
   getOrders,
   getSession,
   login,
   signup,
-  logout
+  logout,
+  deleteNotification
 };

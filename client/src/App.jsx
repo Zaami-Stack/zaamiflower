@@ -4,9 +4,12 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import {
   createFlower,
+  createNotification,
   createOrder,
+  deleteNotification,
   deleteFlower,
   getFlowers,
+  getNotifications,
   getOrders,
   getSession,
   login,
@@ -40,6 +43,11 @@ const initialSignupForm = {
   password: ""
 };
 
+const initialNotificationForm = {
+  title: "",
+  message: ""
+};
+
 const occasionTabs = [
   { label: "All", value: "all" },
   { label: "Romance", value: "romance" },
@@ -57,6 +65,7 @@ const marqueeHighlights = [
   "Secure checkout"
 ];
 const USD_TO_MAD_RATE = 10;
+const NOTIFICATION_SEEN_STORAGE_KEY = "flyethr_notifications_seen_at";
 const currencyOptions = {
   USD: {
     label: "USD ($)",
@@ -80,6 +89,11 @@ function float(value) {
 
 function normalizedText(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function toTimestamp(value) {
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 function iconForOccasion(occasion) {
@@ -158,9 +172,24 @@ export default function App() {
   const [loginForm, setLoginForm] = useState(initialLoginForm);
   const [signupForm, setSignupForm] = useState(initialSignupForm);
   const [flowerForm, setFlowerForm] = useState(initialFlowerForm);
+  const [notificationForm, setNotificationForm] = useState(initialNotificationForm);
   const [checkoutForm, setCheckoutForm] = useState(initialCheckoutForm);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [currencyCode, setCurrencyCode] = useState("USD");
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsError, setNotificationsError] = useState("");
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [submittingNotification, setSubmittingNotification] = useState(false);
+  const [deletingNotificationId, setDeletingNotificationId] = useState("");
+  const [seenNotificationAt, setSeenNotificationAt] = useState(() => {
+    if (typeof window === "undefined") {
+      return 0;
+    }
+
+    const stored = Number(window.localStorage.getItem(NOTIFICATION_SEEN_STORAGE_KEY));
+    return Number.isFinite(stored) ? stored : 0;
+  });
   const [toast, setToast] = useState("");
 
   const isAdmin = user?.role === "admin";
@@ -228,6 +257,24 @@ export default function App() {
     };
   }, [orders, flowers]);
 
+  const latestNotificationAt = useMemo(
+    () => notifications.reduce((max, item) => Math.max(max, toTimestamp(item.createdAt)), 0),
+    [notifications]
+  );
+
+  const unreadNotificationCount = useMemo(
+    () => notifications.filter((item) => toTimestamp(item.createdAt) > seenNotificationAt).length,
+    [notifications, seenNotificationAt]
+  );
+
+  const formatNotificationDate = (value) =>
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(new Date(value));
+
   const showToast = (message) => {
     setToast(message);
   };
@@ -254,11 +301,13 @@ export default function App() {
   const navigateToSection = (ref) => {
     scrollToSection(ref);
     setMenuOpen(false);
+    setNotificationsOpen(false);
   };
 
   const openCart = () => {
     setCartOpen(true);
     setMenuOpen(false);
+    setNotificationsOpen(false);
   };
 
   useEffect(() => {
@@ -492,9 +541,24 @@ export default function App() {
     }
   };
 
+  const refreshNotifications = async () => {
+    setNotificationsLoading(true);
+    setNotificationsError("");
+    try {
+      const response = await getNotifications(30);
+      setNotifications(Array.isArray(response) ? response : []);
+    } catch (error) {
+      setNotifications([]);
+      setNotificationsError(error.message || "Failed to load notifications.");
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
   useEffect(() => {
     refreshSession();
     refreshFlowers();
+    refreshNotifications();
   }, []);
 
   useEffect(() => {
@@ -523,8 +587,26 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(NOTIFICATION_SEEN_STORAGE_KEY, String(seenNotificationAt));
+  }, [seenNotificationAt]);
+
+  useEffect(() => {
+    if (!notificationsOpen) {
+      return;
+    }
+
+    if (latestNotificationAt > seenNotificationAt) {
+      setSeenNotificationAt(latestNotificationAt);
+    }
+  }, [notificationsOpen, latestNotificationAt, seenNotificationAt]);
+
   const openAuth = (mode = "login") => {
     setMenuOpen(false);
+    setNotificationsOpen(false);
     setAuthMode(mode);
     setAuthOpen(true);
   };
@@ -608,6 +690,7 @@ export default function App() {
     setUser(null);
     setOrders([]);
     setMenuOpen(false);
+    setNotificationsOpen(false);
     showToast("Logged out.");
   };
 
@@ -713,6 +796,54 @@ export default function App() {
     }
   };
 
+  const toggleNotifications = () => {
+    setCartOpen(false);
+    setNotificationsOpen((previous) => !previous);
+    setMenuOpen(false);
+  };
+
+  const handleCreateNotification = async (event) => {
+    event.preventDefault();
+
+    const title = notificationForm.title.trim();
+    const message = notificationForm.message.trim();
+
+    if (!title) {
+      showToast("Promo title is required.");
+      return;
+    }
+
+    setSubmittingNotification(true);
+    try {
+      await createNotification({ title, message });
+      setNotificationForm(initialNotificationForm);
+      showToast("Promo notification published.");
+      refreshNotifications();
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      setSubmittingNotification(false);
+    }
+  };
+
+  const handleDeleteNotification = async (notification) => {
+    const confirmed = window.confirm(`Remove promo "${notification.title}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingNotificationId(notification.id);
+    try {
+      await deleteNotification(notification.id);
+      showToast("Promo notification removed.");
+      refreshNotifications();
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      setDeletingNotificationId("");
+    }
+  };
+
   return (
     <div className="site-shell">
       <nav className="top-nav">
@@ -773,6 +904,23 @@ export default function App() {
                 ))}
               </select>
             </label>
+
+            <button
+              className="notify-btn"
+              type="button"
+              aria-label={
+                unreadNotificationCount > 0
+                  ? `Open promotions, ${unreadNotificationCount} new`
+                  : "Open promotions"
+              }
+              onClick={toggleNotifications}
+            >
+              <span className="notify-icon-wrap">
+                <img className="notify-icon" src="/bell-fill.svg" alt="" aria-hidden="true" />
+                {unreadNotificationCount > 0 ? <span className="notify-dot" aria-hidden="true" /> : null}
+              </span>
+              <span className="notify-label">Promo</span>
+            </button>
 
             {sessionLoading ? (
               <span className="session-note">Checking session...</span>
@@ -1127,11 +1275,92 @@ export default function App() {
                     ))}
                   </div>
                 </div>
+
+                <div className="admin-card">
+                  <h3>Promo Notifications</h3>
+                  <form className="form-grid" onSubmit={handleCreateNotification}>
+                    <input
+                      placeholder="Promo title"
+                      value={notificationForm.title}
+                      onChange={(event) =>
+                        setNotificationForm((previous) => ({
+                          ...previous,
+                          title: event.target.value
+                        }))
+                      }
+                      required
+                    />
+                    <textarea
+                      placeholder="Promo details (optional)"
+                      value={notificationForm.message}
+                      onChange={(event) =>
+                        setNotificationForm((previous) => ({
+                          ...previous,
+                          message: event.target.value
+                        }))
+                      }
+                    />
+                    <button className="btn-primary" type="submit" disabled={submittingNotification}>
+                      {submittingNotification ? "Publishing..." : "Publish Promo"}
+                    </button>
+                  </form>
+                  <div className="promo-admin-list">
+                    {notifications.length === 0 ? <p>No promos yet.</p> : null}
+                    {notifications.slice(0, 6).map((notification) => (
+                      <div key={notification.id} className="promo-admin-row">
+                        <div>
+                          <strong>{notification.title}</strong>
+                          <p>{formatNotificationDate(notification.createdAt)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="danger-btn"
+                          disabled={deletingNotificationId === notification.id}
+                          onClick={() => handleDeleteNotification(notification)}
+                        >
+                          {deletingNotificationId === notification.id ? "Removing..." : "Remove"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </>
           </section>
         ) : null}
       </main>
+
+      <div
+        className={`notify-overlay ${notificationsOpen ? "open" : ""}`}
+        onClick={() => setNotificationsOpen(false)}
+      >
+        <aside className="notify-panel" onClick={(event) => event.stopPropagation()}>
+          <div className="notify-head">
+            <h3>Promotions</h3>
+            <button type="button" className="icon-btn" onClick={() => setNotificationsOpen(false)}>
+              x
+            </button>
+          </div>
+          <div className="notify-list">
+            {notificationsLoading ? <p className="empty-note">Loading promotions...</p> : null}
+            {!notificationsLoading && notificationsError ? (
+              <p className="empty-note">{notificationsError}</p>
+            ) : null}
+            {!notificationsLoading && !notificationsError && notifications.length === 0 ? (
+              <p className="empty-note">No promo notifications for now.</p>
+            ) : null}
+            {!notificationsLoading && !notificationsError
+              ? notifications.map((notification) => (
+                  <article key={notification.id} className="notify-item">
+                    <h4>{notification.title}</h4>
+                    {notification.message ? <p>{notification.message}</p> : null}
+                    <span>{formatNotificationDate(notification.createdAt)}</span>
+                  </article>
+                ))
+              : null}
+          </div>
+        </aside>
+      </div>
 
       <div className={`cart-overlay ${cartOpen ? "open" : ""}`} onClick={() => setCartOpen(false)}>
         <aside className="cart-sidebar" ref={cartSidebarRef} onClick={(event) => event.stopPropagation()}>

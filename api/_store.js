@@ -56,7 +56,8 @@ function getStore() {
     globalThis.__FLOWER_STORE__ = {
       flowers: clone(seedFlowers),
       orders: [],
-      users: []
+      users: [],
+      notifications: []
     };
   }
   return globalThis.__FLOWER_STORE__;

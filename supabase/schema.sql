@@ -37,8 +37,15 @@ create table if not exists users (
   created_at timestamptz not null default now()
 );
 
+create table if not exists notifications (
+  id text primary key,
+  title text not null,
+  message text not null default '',
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_flowers_created_at on flowers (created_at desc);
 create index if not exists idx_orders_created_at on orders (created_at desc);
 create index if not exists idx_order_items_order_id on order_items (order_id);
 create index if not exists idx_users_email on users (email);
-
+create index if not exists idx_notifications_created_at on notifications (created_at desc);

@@ -79,6 +79,9 @@ If auth variables are missing, login and protected routes return configuration e
 - `DELETE /api/flowers?id=<flowerId>` (admin)
 - `GET /api/orders` (admin)
 - `POST /api/orders` (admin or customer)
+- `GET /api/notifications`
+- `POST /api/notifications` (admin)
+- `DELETE /api/notifications?id=<notificationId>` (admin)
 - `POST /api/auth/login`
 - `POST /api/auth/signup`
 - `POST /api/auth/logout`
