@@ -190,6 +190,13 @@ function cacheHeroImage(value) {
   }
 }
 
+function prefersReducedMotion() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 function normalizeFlowerModel(flower) {
   return {
     ...flower,
@@ -273,6 +280,8 @@ export default function App() {
   const lenisRef = useRef(null);
   const cartSidebarRef = useRef(null);
   const authModalRef = useRef(null);
+  const chatPanelRef = useRef(null);
+  const chatToggleRef = useRef(null);
   const chatMessagesRef = useRef(null);
 
   const [flowers, setFlowers] = useState([]);
@@ -656,10 +665,61 @@ export default function App() {
   }, [authOpen, authMode]);
 
   useEffect(() => {
-    if (!chatOpen || !chatMessagesRef.current) {
-      return;
+    if (!chatOpen || !desktopChatEnabled || !chatPanelRef.current || prefersReducedMotion()) {
+      return undefined;
     }
-    chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+
+    const panel = chatPanelRef.current;
+    const revealNodes = panel.querySelectorAll(".chatbot-head, .chatbot-message, .chatbot-form");
+    const panelTween = gsap.fromTo(
+      panel,
+      { opacity: 0, y: 22, scale: 0.965, transformOrigin: "bottom right" },
+      { opacity: 1, y: 0, scale: 1, duration: 0.38, ease: "power3.out" }
+    );
+    const revealTween = gsap.fromTo(
+      revealNodes,
+      { y: 12, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.3, stagger: 0.04, ease: "power2.out", delay: 0.06 }
+    );
+    const toggleTween = chatToggleRef.current
+      ? gsap.fromTo(
+          chatToggleRef.current,
+          { scale: 1 },
+          { scale: 1.05, duration: 0.16, yoyo: true, repeat: 1, ease: "power1.out" }
+        )
+      : null;
+
+    return () => {
+      panelTween.kill();
+      revealTween.kill();
+      if (toggleTween) {
+        toggleTween.kill();
+      }
+    };
+  }, [chatOpen, desktopChatEnabled]);
+
+  useEffect(() => {
+    if (!chatOpen || !chatMessagesRef.current) {
+      return undefined;
+    }
+    const messagesNode = chatMessagesRef.current;
+    messagesNode.scrollTop = messagesNode.scrollHeight;
+
+    if (prefersReducedMotion()) {
+      return undefined;
+    }
+
+    const latestMessage = messagesNode.querySelector(".chatbot-message:last-child");
+    if (!latestMessage) {
+      return undefined;
+    }
+
+    const tween = gsap.fromTo(
+      latestMessage,
+      { y: 8, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.24, ease: "power2.out" }
+    );
+    return () => tween.kill();
   }, [chatMessages, chatOpen]);
 
   const refreshSession = async () => {
@@ -2165,6 +2225,7 @@ export default function App() {
             className={`chatbot-toggle ${chatOpen ? "open" : ""}`}
             aria-expanded={chatOpen}
             aria-controls="chatbot-panel"
+            ref={chatToggleRef}
             onClick={toggleChat}
           >
             {chatOpen ? "Close Chat" : "Chat with us"}
@@ -2174,6 +2235,7 @@ export default function App() {
             id="chatbot-panel"
             className={`chatbot-panel ${chatOpen ? "open" : ""}`}
             aria-hidden={!chatOpen}
+            ref={chatPanelRef}
           >
             <div className="chatbot-head">
               <div className="chatbot-head-copy">
@@ -2193,7 +2255,7 @@ export default function App() {
               ))}
               {chatSubmitting ? (
                 <article className="chatbot-message assistant pending">
-                  <p>Typing...</p>
+                  <p>Typing</p>
                 </article>
               ) : null}
             </div>
