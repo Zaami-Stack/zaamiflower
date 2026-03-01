@@ -77,6 +77,7 @@ const marqueeHighlights = [
 ];
 const USD_TO_MAD_RATE = 10;
 const NOTIFICATION_SEEN_STORAGE_KEY = "flyethr_notifications_seen_at";
+const HERO_IMAGE_STORAGE_KEY = "flyethr_hero_image";
 const CHATBOT_WELCOME_MESSAGE =
   "Hi, I am the Flyethr assistant. Ask me about bouquets, pricing, delivery, and payment options.";
 const MAX_CHAT_HISTORY = 8;
@@ -165,6 +166,26 @@ function isValidHttpImageUrl(value) {
     return parsed.protocol === "https:" || parsed.protocol === "http:";
   } catch {
     return false;
+  }
+}
+
+function getCachedHeroImage() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const stored = String(window.localStorage.getItem(HERO_IMAGE_STORAGE_KEY) || "").trim();
+  return isValidHttpImageUrl(stored) ? stored : "";
+}
+
+function cacheHeroImage(value) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const normalized = String(value || "").trim();
+  if (isValidHttpImageUrl(normalized)) {
+    window.localStorage.setItem(HERO_IMAGE_STORAGE_KEY, normalized);
   }
 }
 
@@ -276,11 +297,12 @@ export default function App() {
   const [loginForm, setLoginForm] = useState(initialLoginForm);
   const [signupForm, setSignupForm] = useState(initialSignupForm);
   const [flowerForm, setFlowerForm] = useState(initialFlowerForm);
-  const [siteSettings, setSiteSettings] = useState({
-    heroImage: DEFAULT_HERO_IMAGE,
+  const [siteSettings, setSiteSettings] = useState(() => ({
+    heroImage: getCachedHeroImage(),
     updatedAt: ""
-  });
-  const [heroImageForm, setHeroImageForm] = useState(DEFAULT_HERO_IMAGE);
+  }));
+  const [heroImageForm, setHeroImageForm] = useState(() => getCachedHeroImage() || DEFAULT_HERO_IMAGE);
+  const [siteSettingsLoaded, setSiteSettingsLoaded] = useState(() => Boolean(getCachedHeroImage()));
   const [savingHeroImage, setSavingHeroImage] = useState(false);
   const [notificationForm, setNotificationForm] = useState(initialNotificationForm);
   const [checkoutForm, setCheckoutForm] = useState(initialCheckoutForm);
@@ -390,6 +412,7 @@ export default function App() {
     () => (notifications.length > 0 ? notifications[0] : null),
     [notifications]
   );
+  const heroImageSrc = siteSettings.heroImage || (siteSettingsLoaded ? DEFAULT_HERO_IMAGE : "");
 
   const formatNotificationDate = (value) =>
     new Intl.DateTimeFormat("en-US", {
@@ -699,11 +722,14 @@ export default function App() {
         updatedAt: response?.updatedAt || ""
       });
       setHeroImageForm(heroImage);
+      cacheHeroImage(heroImage);
     } catch {
       setSiteSettings((previous) => ({
         ...previous,
-        heroImage: previous.heroImage || DEFAULT_HERO_IMAGE
+        heroImage: previous.heroImage || ""
       }));
+    } finally {
+      setSiteSettingsLoaded(true);
     }
   };
 
@@ -1063,6 +1089,7 @@ export default function App() {
         updatedAt: response?.updatedAt || new Date().toISOString()
       });
       setHeroImageForm(normalizedImage);
+      cacheHeroImage(normalizedImage);
       showToast("Hero image updated.");
     } catch (error) {
       showToast(error.message);
@@ -1394,12 +1421,14 @@ export default function App() {
           </div>
         </div>
         <div className="hero-right">
-          <img
-            className="hero-image"
-            src={siteSettings.heroImage || DEFAULT_HERO_IMAGE}
-            alt="Fresh bouquet arrangement"
-            loading="lazy"
-          />
+          {heroImageSrc ? (
+            <img
+              className="hero-image"
+              src={heroImageSrc}
+              alt="Fresh bouquet arrangement"
+              loading="lazy"
+            />
+          ) : null}
           <div className="hero-badge">
             <div className="hero-number">{flowers.length}</div>
             <div className="hero-label">Flower Types Available</div>
