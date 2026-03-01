@@ -81,6 +81,7 @@ const HERO_IMAGE_STORAGE_KEY = "flyethr_hero_image";
 const CHATBOT_WELCOME_MESSAGE =
   "Hi, I am the Flyethr assistant. Ask me about bouquets, pricing, delivery, and payment options.";
 const MAX_CHAT_HISTORY = 8;
+const CHAT_DESKTOP_MIN_WIDTH = 981;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[0-9+\-\s()]{7,24}$/;
 const currencyOptions = {
@@ -324,6 +325,9 @@ export default function App() {
   });
   const [toast, setToast] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [desktopChatEnabled, setDesktopChatEnabled] = useState(() =>
+    typeof window === "undefined" ? true : window.innerWidth >= CHAT_DESKTOP_MIN_WIDTH
+  );
   const [chatInput, setChatInput] = useState("");
   const [chatSubmitting, setChatSubmitting] = useState(false);
   const [chatMessages, setChatMessages] = useState(() => [
@@ -764,12 +768,22 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
     const handleResize = () => {
-      if (window.innerWidth > 980) {
+      const isDesktop = window.innerWidth >= CHAT_DESKTOP_MIN_WIDTH;
+      setDesktopChatEnabled(isDesktop);
+
+      if (isDesktop) {
         setMenuOpen(false);
+      } else {
+        setChatOpen(false);
       }
     };
 
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -2144,54 +2158,66 @@ export default function App() {
         </aside>
       </div>
 
-      <button
-        type="button"
-        className={`chatbot-toggle ${chatOpen ? "open" : ""}`}
-        aria-expanded={chatOpen}
-        aria-controls="chatbot-panel"
-        onClick={toggleChat}
-      >
-        {chatOpen ? "Close Chat" : "Chat with us"}
-      </button>
-
-      <aside id="chatbot-panel" className={`chatbot-panel ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
-        <div className="chatbot-head">
-          <div className="chatbot-head-copy">
-            <h3>Flower Assistant</h3>
-            <p>Ask about bouquets, delivery, and checkout.</p>
-          </div>
-          <button type="button" className="chatbot-close" onClick={() => setChatOpen(false)}>
-            x
+      {desktopChatEnabled ? (
+        <>
+          <button
+            type="button"
+            className={`chatbot-toggle ${chatOpen ? "open" : ""}`}
+            aria-expanded={chatOpen}
+            aria-controls="chatbot-panel"
+            onClick={toggleChat}
+          >
+            {chatOpen ? "Close Chat" : "Chat with us"}
           </button>
-        </div>
 
-        <div className="chatbot-messages" ref={chatMessagesRef}>
-          {chatMessages.map((entry) => (
-            <article key={entry.id} className={`chatbot-message ${entry.role}`}>
-              <p>{entry.content}</p>
-            </article>
-          ))}
-          {chatSubmitting ? (
-            <article className="chatbot-message assistant pending">
-              <p>Typing...</p>
-            </article>
-          ) : null}
-        </div>
+          <aside
+            id="chatbot-panel"
+            className={`chatbot-panel ${chatOpen ? "open" : ""}`}
+            aria-hidden={!chatOpen}
+          >
+            <div className="chatbot-head">
+              <div className="chatbot-head-copy">
+                <h3>Flower Assistant</h3>
+                <p>Ask about bouquets, delivery, and checkout.</p>
+              </div>
+              <button type="button" className="chatbot-close" onClick={() => setChatOpen(false)}>
+                x
+              </button>
+            </div>
 
-        <form className="chatbot-form" onSubmit={handleChatSubmit}>
-          <input
-            type="text"
-            placeholder="Type your message..."
-            value={chatInput}
-            onChange={(event) => setChatInput(event.target.value)}
-            maxLength={500}
-            disabled={chatSubmitting}
-          />
-          <button type="submit" className="btn-primary" disabled={chatSubmitting || !chatInput.trim()}>
-            {chatSubmitting ? "Sending..." : "Send"}
-          </button>
-        </form>
-      </aside>
+            <div className="chatbot-messages" ref={chatMessagesRef}>
+              {chatMessages.map((entry) => (
+                <article key={entry.id} className={`chatbot-message ${entry.role}`}>
+                  <p>{entry.content}</p>
+                </article>
+              ))}
+              {chatSubmitting ? (
+                <article className="chatbot-message assistant pending">
+                  <p>Typing...</p>
+                </article>
+              ) : null}
+            </div>
+
+            <form className="chatbot-form" onSubmit={handleChatSubmit}>
+              <input
+                type="text"
+                placeholder="Type your message..."
+                value={chatInput}
+                onChange={(event) => setChatInput(event.target.value)}
+                maxLength={500}
+                disabled={chatSubmitting}
+              />
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={chatSubmitting || !chatInput.trim()}
+              >
+                {chatSubmitting ? "Sending..." : "Send"}
+              </button>
+            </form>
+          </aside>
+        </>
+      ) : null}
 
       <div className={`modal-overlay ${authOpen ? "open" : ""}`} onClick={() => setAuthOpen(false)}>
         <div className="modal-card" ref={authModalRef} onClick={(event) => event.stopPropagation()}>
