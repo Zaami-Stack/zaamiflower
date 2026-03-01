@@ -8,8 +8,8 @@ delete process.env.OPENAI_MODEL;
 delete process.env.SUPABASE_URL;
 delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const chatHandler = require("../chat");
-const { getStore } = require("../_store");
+const chatHandler = require("../../api/chat");
+const { getStore } = require("../../api/_store");
 
 function createMockRequest({ method, url, body, headers }) {
   const req = new EventEmitter();

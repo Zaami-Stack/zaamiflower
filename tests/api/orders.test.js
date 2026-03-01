@@ -11,9 +11,9 @@ process.env.CUSTOMER_PASSWORD = "Customer1234!";
 delete process.env.SUPABASE_URL;
 delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const ordersHandler = require("../orders");
-const { setSessionCookie } = require("../_auth");
-const { getStore } = require("../_store");
+const ordersHandler = require("../../api/orders");
+const { setSessionCookie } = require("../../api/_auth");
+const { getStore } = require("../../api/_store");
 
 function createMockRequest({ method, url, body, headers }) {
   const req = new EventEmitter();
