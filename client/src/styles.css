@@ -648,10 +648,11 @@ main {
 }
 
 .product-image {
-  height: 260px;
+  height: 200px;
   position: relative;
   background: linear-gradient(160deg, #f0e8e0, #e0d0c0);
-  background-size: cover;
+  background-size: contain;
+  background-repeat: no-repeat;
   background-position: center;
   display: flex;
   align-items: center;
@@ -1768,7 +1769,7 @@ textarea:focus {
   }
 
   .product-image {
-    height: 220px;
+    height: 160px;
   }
 
   .about-grid {
@@ -1885,7 +1886,7 @@ textarea:focus {
   }
 
   .product-image {
-    height: 250px;
+    height: 190px;
   }
 
   .product-name {
