@@ -665,27 +665,55 @@ export default function App() {
   }, [authOpen, authMode]);
 
   useEffect(() => {
-    if (!chatOpen || !desktopChatEnabled || !chatPanelRef.current || prefersReducedMotion()) {
+    if (!desktopChatEnabled || !chatPanelRef.current) {
       return undefined;
     }
 
     const panel = chatPanelRef.current;
     const revealNodes = panel.querySelectorAll(".chatbot-head, .chatbot-message, .chatbot-form");
+    const toggle = chatToggleRef.current;
+
+    if (!chatOpen || prefersReducedMotion()) {
+      gsap.set(panel, { clearProps: "opacity,transform,transformOrigin" });
+      if (revealNodes.length > 0) {
+        gsap.set(revealNodes, { clearProps: "opacity,transform" });
+      }
+      if (toggle) {
+        gsap.set(toggle, { clearProps: "transform" });
+      }
+      return undefined;
+    }
+
     const panelTween = gsap.fromTo(
       panel,
       { opacity: 0, y: 22, scale: 0.965, transformOrigin: "bottom right" },
-      { opacity: 1, y: 0, scale: 1, duration: 0.38, ease: "power3.out" }
+      {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        duration: 0.38,
+        ease: "power3.out",
+        clearProps: "opacity,transform,transformOrigin"
+      }
     );
     const revealTween = gsap.fromTo(
       revealNodes,
       { y: 12, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.3, stagger: 0.04, ease: "power2.out", delay: 0.06 }
+      {
+        y: 0,
+        opacity: 1,
+        duration: 0.3,
+        stagger: 0.04,
+        ease: "power2.out",
+        delay: 0.06,
+        clearProps: "opacity,transform"
+      }
     );
-    const toggleTween = chatToggleRef.current
+    const toggleTween = toggle
       ? gsap.fromTo(
-          chatToggleRef.current,
+          toggle,
           { scale: 1 },
-          { scale: 1.05, duration: 0.16, yoyo: true, repeat: 1, ease: "power1.out" }
+          { scale: 1.05, duration: 0.16, yoyo: true, repeat: 1, ease: "power1.out", clearProps: "transform" }
         )
       : null;
 
