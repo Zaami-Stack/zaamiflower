@@ -120,6 +120,13 @@ function deleteNotification(notificationId) {
   });
 }
 
+function createChatReply(payload) {
+  return request("/chat", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 function getSession() {
   return request("/auth/me");
 }
@@ -153,6 +160,7 @@ export {
   getSiteSettings,
   updateSiteSettings,
   updateOrderStatus,
+  createChatReply,
   createNotification,
   getFlowers,
   getNotifications,

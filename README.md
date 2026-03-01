@@ -68,6 +68,8 @@ Optional customer login:
 
 - `CUSTOMER_EMAIL`
 - `CUSTOMER_PASSWORD`
+- `OPENAI_API_KEY` (optional, enables AI chatbot replies)
+- `OPENAI_MODEL` (optional, default: `gpt-4o-mini`)
 
 If auth variables are missing, login and protected routes return configuration errors.
 
@@ -93,6 +95,7 @@ If auth variables are missing, login and protected routes return configuration e
 - `POST /api/auth/signup`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `POST /api/chat`
 
 `POST /api/orders` expects customer payload with:
 

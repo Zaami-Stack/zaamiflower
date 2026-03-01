@@ -4,6 +4,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import {
   createFlower,
+  createChatReply,
   createNotification,
   createOrder,
   deleteNotification,
@@ -76,6 +77,9 @@ const marqueeHighlights = [
 ];
 const USD_TO_MAD_RATE = 10;
 const NOTIFICATION_SEEN_STORAGE_KEY = "flyethr_notifications_seen_at";
+const CHATBOT_WELCOME_MESSAGE =
+  "Hi, I am the Flyethr assistant. Ask me about bouquets, pricing, delivery, and payment options.";
+const MAX_CHAT_HISTORY = 8;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[0-9+\-\s()]{7,24}$/;
 const currencyOptions = {
@@ -247,6 +251,7 @@ export default function App() {
   const lenisRef = useRef(null);
   const cartSidebarRef = useRef(null);
   const authModalRef = useRef(null);
+  const chatMessagesRef = useRef(null);
 
   const [flowers, setFlowers] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -296,6 +301,16 @@ export default function App() {
     return Number.isFinite(stored) ? stored : 0;
   });
   const [toast, setToast] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSubmitting, setChatSubmitting] = useState(false);
+  const [chatMessages, setChatMessages] = useState(() => [
+    {
+      id: "assistant-welcome",
+      role: "assistant",
+      content: CHATBOT_WELCOME_MESSAGE
+    }
+  ]);
 
   const isAdmin = user?.role === "admin";
   const canCheckout = user?.role === "admin" || user?.role === "customer";
@@ -411,12 +426,14 @@ export default function App() {
     scrollToSection(ref);
     setMenuOpen(false);
     setNotificationsOpen(false);
+    setChatOpen(false);
   };
 
   const openCart = () => {
     setCartOpen(true);
     setMenuOpen(false);
     setNotificationsOpen(false);
+    setChatOpen(false);
   };
 
   useEffect(() => {
@@ -611,6 +628,13 @@ export default function App() {
     return () => tween.kill();
   }, [authOpen, authMode]);
 
+  useEffect(() => {
+    if (!chatOpen || !chatMessagesRef.current) {
+      return;
+    }
+    chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+  }, [chatMessages, chatOpen]);
+
   const refreshSession = async () => {
     setSessionLoading(true);
     try {
@@ -744,6 +768,7 @@ export default function App() {
   const openAuth = (mode = "login") => {
     setMenuOpen(false);
     setNotificationsOpen(false);
+    setChatOpen(false);
     setAuthMode(mode);
     setAuthOpen(true);
   };
@@ -1091,8 +1116,71 @@ export default function App() {
 
   const toggleNotifications = () => {
     setCartOpen(false);
+    setChatOpen(false);
     setNotificationsOpen((previous) => !previous);
     setMenuOpen(false);
+  };
+
+  const toggleChat = () => {
+    setCartOpen(false);
+    setNotificationsOpen(false);
+    setMenuOpen(false);
+    setChatOpen((previous) => !previous);
+  };
+
+  const handleChatSubmit = async (event) => {
+    event.preventDefault();
+
+    const message = chatInput.trim();
+    if (!message || chatSubmitting) {
+      return;
+    }
+
+    const history = chatMessages.slice(-MAX_CHAT_HISTORY).map((entry) => ({
+      role: entry.role,
+      content: entry.content
+    }));
+
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: message
+    };
+
+    setChatMessages((previous) => [...previous, userMessage]);
+    setChatInput("");
+    setChatSubmitting(true);
+
+    try {
+      const response = await createChatReply({
+        message,
+        history
+      });
+      const reply = String(response?.reply || "").trim();
+
+      setChatMessages((previous) => [
+        ...previous,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content:
+            reply || "I could not generate a response right now. Please try again in a moment."
+        }
+      ]);
+    } catch (error) {
+      setChatMessages((previous) => [
+        ...previous,
+        {
+          id: `assistant-error-${Date.now()}`,
+          role: "assistant",
+          content:
+            "I ran into a temporary issue. Please try again, or contact us on WhatsApp for immediate help."
+        }
+      ]);
+      showToast(error.message || "Unable to send chatbot message.");
+    } finally {
+      setChatSubmitting(false);
+    }
   };
 
   const handleCreateNotification = async (event) => {
@@ -2026,6 +2114,55 @@ export default function App() {
           </div>
         </aside>
       </div>
+
+      <button
+        type="button"
+        className={`chatbot-toggle ${chatOpen ? "open" : ""}`}
+        aria-expanded={chatOpen}
+        aria-controls="chatbot-panel"
+        onClick={toggleChat}
+      >
+        {chatOpen ? "Close Chat" : "Chat with us"}
+      </button>
+
+      <aside id="chatbot-panel" className={`chatbot-panel ${chatOpen ? "open" : ""}`} aria-hidden={!chatOpen}>
+        <div className="chatbot-head">
+          <div className="chatbot-head-copy">
+            <h3>Flower Assistant</h3>
+            <p>Ask about bouquets, delivery, and checkout.</p>
+          </div>
+          <button type="button" className="chatbot-close" onClick={() => setChatOpen(false)}>
+            x
+          </button>
+        </div>
+
+        <div className="chatbot-messages" ref={chatMessagesRef}>
+          {chatMessages.map((entry) => (
+            <article key={entry.id} className={`chatbot-message ${entry.role}`}>
+              <p>{entry.content}</p>
+            </article>
+          ))}
+          {chatSubmitting ? (
+            <article className="chatbot-message assistant pending">
+              <p>Typing...</p>
+            </article>
+          ) : null}
+        </div>
+
+        <form className="chatbot-form" onSubmit={handleChatSubmit}>
+          <input
+            type="text"
+            placeholder="Type your message..."
+            value={chatInput}
+            onChange={(event) => setChatInput(event.target.value)}
+            maxLength={500}
+            disabled={chatSubmitting}
+          />
+          <button type="submit" className="btn-primary" disabled={chatSubmitting || !chatInput.trim()}>
+            {chatSubmitting ? "Sending..." : "Send"}
+          </button>
+        </form>
+      </aside>
 
       <div className={`modal-overlay ${authOpen ? "open" : ""}`} onClick={() => setAuthOpen(false)}>
         <div className="modal-card" ref={authModalRef} onClick={(event) => event.stopPropagation()}>
