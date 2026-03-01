@@ -1809,6 +1809,9 @@ textarea:focus {
   .menu-toggle {
     display: inline-flex;
     margin-left: auto;
+    border: none;
+    background: transparent;
+    box-shadow: none;
   }
 
   .notify-btn-mobile {
@@ -1818,6 +1821,7 @@ textarea:focus {
     min-height: 38px;
     padding: 0;
     background: transparent;
+    border: none;
     margin-left: 6px;
     flex: 0 0 38px;
   }
@@ -1848,11 +1852,10 @@ textarea:focus {
     margin-left: 6px;
     flex: 0 0 38px;
     background: transparent;
-    border: 1px solid var(--border);
+    border: none;
   }
 
   .cart-btn-mobile:hover {
-    border-color: var(--accent);
     background: transparent;
   }
 
