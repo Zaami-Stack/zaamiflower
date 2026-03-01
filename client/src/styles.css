@@ -2129,6 +2129,41 @@ textarea:focus {
   .about-grid {
     grid-template-columns: 1fr;
   }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: clamp(30px, 7vw, 38px);
+  }
+
+  .admin-panels {
+    gap: 12px;
+  }
+
+  .admin-card {
+    padding: 16px;
+  }
+
+  .admin-card h3 {
+    font-size: clamp(24px, 5vw, 30px);
+    margin-bottom: 10px;
+  }
+
+  .promo-admin-row {
+    padding: 9px 10px;
+  }
+
+  .order-row {
+    padding: 9px 10px;
+  }
 }
 
 @media (max-width: 680px) {
@@ -2308,6 +2343,162 @@ textarea:focus {
 
   .modal-card {
     padding: 22px 16px;
+  }
+
+  .admin-section {
+    padding-bottom: 108px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-label {
+    letter-spacing: 1.4px;
+  }
+
+  .admin-panels {
+    gap: 10px;
+  }
+
+  .admin-card {
+    padding: 14px;
+  }
+
+  .admin-card h3 {
+    font-size: clamp(22px, 7vw, 28px);
+  }
+
+  .focus-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .table-wrap {
+    overflow: visible;
+  }
+
+  .table-wrap table,
+  .table-wrap thead,
+  .table-wrap tbody,
+  .table-wrap tr,
+  .table-wrap td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-wrap thead {
+    display: none;
+  }
+
+  .table-wrap tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .table-wrap tbody tr {
+    border: 1px solid var(--border);
+    background: #fffdf9;
+    padding: 10px;
+  }
+
+  .table-wrap tbody td {
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .table-wrap tbody td:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .table-wrap tbody td:nth-child(1)::before {
+    content: "Name";
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .table-wrap tbody td:nth-child(2)::before {
+    content: "Occasion";
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .table-wrap tbody td:nth-child(3)::before {
+    content: "Price";
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .table-wrap tbody td:nth-child(4)::before {
+    content: "Stock";
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .table-wrap tbody td.table-action-cell {
+    width: 100%;
+    display: grid;
+    gap: 8px;
+    padding-top: 8px;
+    justify-content: stretch;
+  }
+
+  .table-wrap tbody td.table-action-cell::before {
+    content: "Actions";
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .table-btn,
+  .table-action-cell .danger-btn {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .promo-admin-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .promo-admin-row .danger-btn {
+    width: 100%;
+  }
+
+  .order-row {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .order-side {
+    width: 100%;
+    justify-items: stretch;
+    gap: 8px;
+  }
+
+  .order-status-select {
+    width: 100%;
   }
 }
 
