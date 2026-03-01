@@ -16,6 +16,8 @@ const defaultData = {
       occasion: "romance",
       image:
         "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=1000&q=80",
+      imageFocusX: 50,
+      imageFocusY: 46,
       stock: 15,
       createdAt: "2026-01-05T09:00:00.000Z"
     },
@@ -27,6 +29,8 @@ const defaultData = {
       occasion: "birthday",
       image:
         "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=1000&q=80",
+      imageFocusX: 50,
+      imageFocusY: 46,
       stock: 20,
       createdAt: "2026-01-09T12:30:00.000Z"
     },
@@ -38,6 +42,8 @@ const defaultData = {
       occasion: "wedding",
       image:
         "https://images.unsplash.com/photo-1468327768560-75b778cbb551?auto=format&fit=crop&w=1000&q=80",
+      imageFocusX: 50,
+      imageFocusY: 46,
       stock: 8,
       createdAt: "2026-01-12T08:45:00.000Z"
     },
@@ -49,6 +55,8 @@ const defaultData = {
       occasion: "thank-you",
       image:
         "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=1000&q=80",
+      imageFocusX: 50,
+      imageFocusY: 46,
       stock: 12,
       createdAt: "2026-01-15T10:00:00.000Z"
     }
@@ -81,4 +89,3 @@ function writeData(data) {
 }
 
 export { ensureDataFile, readData, writeData };
-

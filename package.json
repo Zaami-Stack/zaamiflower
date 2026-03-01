@@ -8,10 +8,10 @@
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix client",
-    "start": "npm run start --prefix server"
+    "start": "npm run start --prefix server",
+    "test:api": "node --test api/tests/*.test.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
   }
 }
-

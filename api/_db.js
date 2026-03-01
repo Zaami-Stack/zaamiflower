@@ -79,6 +79,8 @@ function mapSeedFlowerToRow(flower) {
     price: flower.price,
     occasion: flower.occasion,
     image: flower.image,
+    image_focus_x: Number.isFinite(Number(flower.imageFocusX)) ? Number(flower.imageFocusX) : 50,
+    image_focus_y: Number.isFinite(Number(flower.imageFocusY)) ? Number(flower.imageFocusY) : 50,
     stock: flower.stock,
     created_at: flower.createdAt
   };

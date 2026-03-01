@@ -54,6 +54,14 @@ function createFlower(payload) {
   });
 }
 
+function updateFlower(flowerId, payload) {
+  const params = new URLSearchParams({ id: flowerId });
+  return request(`/flowers?${params.toString()}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
 function deleteFlower(flowerId) {
   const params = new URLSearchParams({ id: flowerId });
   return request(`/flowers?${params.toString()}`, {
@@ -69,6 +77,14 @@ function createOrder(payload) {
   return request("/orders", {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+function updateOrderStatus(orderId, paymentStatus) {
+  const params = new URLSearchParams({ id: orderId });
+  return request(`/orders?${params.toString()}`, {
+    method: "PATCH",
+    body: JSON.stringify({ paymentStatus })
   });
 }
 
@@ -122,6 +138,8 @@ export {
   createFlower,
   deleteFlower,
   createOrder,
+  updateFlower,
+  updateOrderStatus,
   createNotification,
   getFlowers,
   getNotifications,

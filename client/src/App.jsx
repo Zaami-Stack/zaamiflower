@@ -14,7 +14,9 @@ import {
   getSession,
   login,
   signup,
-  logout
+  logout,
+  updateFlower,
+  updateOrderStatus
 } from "./api";
 
 const initialFlowerForm = {
@@ -23,6 +25,8 @@ const initialFlowerForm = {
   price: "",
   occasion: "general",
   image: "",
+  imageFocusX: 50,
+  imageFocusY: 50,
   stock: 0
 };
 
@@ -68,6 +72,8 @@ const marqueeHighlights = [
 ];
 const USD_TO_MAD_RATE = 10;
 const NOTIFICATION_SEEN_STORAGE_KEY = "flyethr_notifications_seen_at";
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[0-9+\-\s()]{7,24}$/;
 const currencyOptions = {
   USD: {
     label: "USD ($)",
@@ -109,20 +115,78 @@ function iconForOccasion(occasion) {
   return map[occasion] || "F";
 }
 
+function flowerObjectPosition(flower) {
+  const focusX = Number(flower?.imageFocusX);
+  const focusY = Number(flower?.imageFocusY);
+  const safeX = Number.isFinite(focusX) ? Math.min(100, Math.max(0, focusX)) : 50;
+  const safeY = Number.isFinite(focusY) ? Math.min(100, Math.max(0, focusY)) : 50;
+  return `${safeX}% ${safeY}%`;
+}
+
+function normalizePaymentStatus(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "paid" || normalized === "failed") {
+    return normalized;
+  }
+  return "pending";
+}
+
+function paymentStatusLabel(status) {
+  const normalized = normalizePaymentStatus(status);
+  if (normalized === "paid") {
+    return "Paid";
+  }
+  if (normalized === "failed") {
+    return "Failed";
+  }
+  return "Pending";
+}
+
+function isValidPhone(value) {
+  const normalized = String(value || "").trim();
+  if (!PHONE_REGEX.test(normalized)) {
+    return false;
+  }
+  const digits = normalized.replace(/\D/g, "").length;
+  return digits >= 7 && digits <= 15;
+}
+
+function normalizeFlowerModel(flower) {
+  return {
+    ...flower,
+    imageFocusX: Number.isFinite(Number(flower?.imageFocusX)) ? Number(flower.imageFocusX) : 50,
+    imageFocusY: Number.isFinite(Number(flower?.imageFocusY)) ? Number(flower.imageFocusY) : 50
+  };
+}
+
+function normalizeOrderModel(order) {
+  return {
+    ...order,
+    paymentMethod: order?.paymentMethod === "paypal" ? "paypal" : "cash",
+    paymentStatus: normalizePaymentStatus(order?.paymentStatus),
+    customer: {
+      name: String(order?.customer?.name || "").trim(),
+      email: String(order?.customer?.email || "").trim(),
+      phone: String(order?.customer?.phone || "").trim(),
+      address: String(order?.customer?.address || "").trim()
+    }
+  };
+}
+
 function FlowerCard({ flower, onAdd, formatCurrency }) {
   const hasImage = Boolean(flower.image);
   return (
     <article className="product-card">
-      <div
-        className="product-image"
-        style={
-          hasImage
-            ? {
-                backgroundImage: `url(${flower.image})`
-              }
-            : undefined
-        }
-      >
+      <div className="product-image">
+        {hasImage ? (
+          <img
+            className="product-image-media"
+            src={flower.image}
+            alt={flower.name}
+            style={{ objectPosition: flowerObjectPosition(flower) }}
+            loading="lazy"
+          />
+        ) : null}
         {!hasImage ? <span className="product-letter">{iconForOccasion(flower.occasion)}</span> : null}
         {flower.stock < 5 ? <div className="product-badge sale">Low Stock</div> : null}
       </div>
@@ -141,6 +205,20 @@ function FlowerCard({ flower, onAdd, formatCurrency }) {
           </button>
         </div>
       </div>
+    </article>
+  );
+}
+
+function ProductCardSkeleton({ index }) {
+  return (
+    <article className="product-card product-card-skeleton" aria-hidden="true">
+      <div className="product-image product-image-skeleton" />
+      <div className="product-info">
+        <div className="skeleton-line skeleton-title" />
+        <div className="skeleton-line" />
+        <div className="skeleton-line short" />
+      </div>
+      <span className="sr-only">Loading flower {index + 1}</span>
     </article>
   );
 }
@@ -165,6 +243,12 @@ export default function App() {
   const [loadingFlowers, setLoadingFlowers] = useState(true);
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const [deletingFlowerId, setDeletingFlowerId] = useState("");
+  const [editingFlowerId, setEditingFlowerId] = useState("");
+  const [savingFlower, setSavingFlower] = useState(false);
+  const [bulkStockDelta, setBulkStockDelta] = useState("");
+  const [bulkStockOccasion, setBulkStockOccasion] = useState("all");
+  const [applyingBulkStock, setApplyingBulkStock] = useState(false);
+  const [updatingOrderId, setUpdatingOrderId] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
@@ -524,7 +608,7 @@ export default function App() {
     setLoadingFlowers(true);
     try {
       const response = await getFlowers();
-      setFlowers(response);
+      setFlowers(Array.isArray(response) ? response.map((flower) => normalizeFlowerModel(flower)) : []);
     } catch (error) {
       showToast(error.message);
     } finally {
@@ -540,7 +624,7 @@ export default function App() {
 
     try {
       const response = await getOrders();
-      setOrders(response);
+      setOrders(Array.isArray(response) ? response.map((order) => normalizeOrderModel(order)) : []);
     } catch (error) {
       showToast(error.message);
       setOrders([]);
@@ -732,6 +816,21 @@ export default function App() {
       return;
     }
 
+    if (!EMAIL_REGEX.test(checkoutForm.email.trim())) {
+      showToast("Please enter a valid email address.");
+      return;
+    }
+
+    if (!isValidPhone(checkoutForm.phone.trim())) {
+      showToast("Please enter a valid phone number.");
+      return;
+    }
+
+    if (checkoutForm.address.trim().length < 6) {
+      showToast("Delivery address must be at least 6 characters.");
+      return;
+    }
+
     setSubmittingOrder(true);
     try {
       await createOrder({
@@ -754,11 +853,7 @@ export default function App() {
         email: user?.email || ""
       }));
       setPaymentMethod("cash");
-      showToast(
-        paymentMethod === "paypal"
-          ? "Order placed. Complete the payment in PayPal."
-          : "Order placed successfully."
-      );
+      showToast("Order created with payment status: Pending.");
       refreshFlowers();
       if (isAdmin) {
         refreshOrders();
@@ -770,23 +865,138 @@ export default function App() {
     }
   };
 
-  const handleCreateFlower = async (event) => {
+  const startEditingFlower = (flower) => {
+    setEditingFlowerId(flower.id);
+    setFlowerForm({
+      name: flower.name || "",
+      description: flower.description || "",
+      price: String(flower.price ?? ""),
+      occasion: flower.occasion || "general",
+      image: flower.image || "",
+      imageFocusX: Number.isFinite(Number(flower.imageFocusX)) ? Number(flower.imageFocusX) : 50,
+      imageFocusY: Number.isFinite(Number(flower.imageFocusY)) ? Number(flower.imageFocusY) : 50,
+      stock: Number.isFinite(Number(flower.stock)) ? Number(flower.stock) : 0
+    });
+  };
+
+  const cancelEditingFlower = () => {
+    setEditingFlowerId("");
+    setFlowerForm(initialFlowerForm);
+  };
+
+  const handleSaveFlower = async (event) => {
     event.preventDefault();
 
+    const payload = {
+      name: flowerForm.name.trim(),
+      description: flowerForm.description.trim(),
+      price: Number(flowerForm.price),
+      occasion: flowerForm.occasion,
+      image: flowerForm.image.trim(),
+      imageFocusX: Number(flowerForm.imageFocusX),
+      imageFocusY: Number(flowerForm.imageFocusY),
+      stock: Number(flowerForm.stock)
+    };
+
+    if (payload.name.length < 2) {
+      showToast("Flower name must be at least 2 characters.");
+      return;
+    }
+
+    if (!Number.isFinite(payload.price) || payload.price <= 0) {
+      showToast("Price must be greater than 0.");
+      return;
+    }
+
+    if (!Number.isInteger(payload.stock) || payload.stock < 0) {
+      showToast("Stock must be a whole number (0 or more).");
+      return;
+    }
+
+    if (!Number.isFinite(payload.imageFocusX) || payload.imageFocusX < 0 || payload.imageFocusX > 100) {
+      showToast("Image focus X must be between 0 and 100.");
+      return;
+    }
+
+    if (!Number.isFinite(payload.imageFocusY) || payload.imageFocusY < 0 || payload.imageFocusY > 100) {
+      showToast("Image focus Y must be between 0 and 100.");
+      return;
+    }
+
+    setSavingFlower(true);
     try {
-      await createFlower({
-        name: flowerForm.name.trim(),
-        description: flowerForm.description.trim(),
-        price: Number(flowerForm.price),
-        occasion: flowerForm.occasion,
-        image: flowerForm.image.trim(),
-        stock: Number(flowerForm.stock)
-      });
+      if (editingFlowerId) {
+        await updateFlower(editingFlowerId, payload);
+        showToast("Flower updated.");
+      } else {
+        await createFlower(payload);
+        showToast("Flower added.");
+      }
       setFlowerForm(initialFlowerForm);
-      showToast("Flower added.");
+      setEditingFlowerId("");
       refreshFlowers();
     } catch (error) {
       showToast(error.message);
+    } finally {
+      setSavingFlower(false);
+    }
+  };
+
+  const handleBulkStockUpdate = async (event) => {
+    event.preventDefault();
+    const delta = Number(bulkStockDelta);
+
+    if (!Number.isInteger(delta) || delta === 0) {
+      showToast("Enter a whole number (not 0) for stock change.");
+      return;
+    }
+
+    const targets = flowers.filter((flower) =>
+      bulkStockOccasion === "all" ? true : flower.occasion === bulkStockOccasion
+    );
+
+    if (targets.length === 0) {
+      showToast("No flowers found for that occasion.");
+      return;
+    }
+
+    setApplyingBulkStock(true);
+    try {
+      await Promise.all(
+        targets.map((flower) =>
+          updateFlower(flower.id, {
+            stock: Math.max(0, Number(flower.stock || 0) + delta)
+          })
+        )
+      );
+      setBulkStockDelta("");
+      showToast(`Stock updated for ${targets.length} flowers.`);
+      refreshFlowers();
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      setApplyingBulkStock(false);
+    }
+  };
+
+  const handleUpdateOrderPaymentStatus = async (order, nextStatus) => {
+    if (normalizePaymentStatus(order.paymentStatus) === normalizePaymentStatus(nextStatus)) {
+      return;
+    }
+
+    setUpdatingOrderId(order.id);
+    try {
+      const updated = await updateOrderStatus(order.id, nextStatus);
+      setOrders((previous) =>
+        previous.map((item) =>
+          item.id === order.id ? normalizeOrderModel(updated) : normalizeOrderModel(item)
+        )
+      );
+      showToast(`Order #${order.id} marked ${paymentStatusLabel(nextStatus)}.`);
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      setUpdatingOrderId("");
     }
   };
 
@@ -1100,17 +1310,26 @@ export default function App() {
             </button>
           </div>
 
-          {loadingFlowers ? <p className="loading-note">Loading flowers...</p> : null}
-
           <div className="products-grid featured-grid" ref={featuredGridRef}>
-            {featuredFlowers.map((flower) => (
-              <FlowerCard
-                key={flower.id}
-                flower={flower}
-                onAdd={addToCart}
-                formatCurrency={formatCurrency}
-              />
-            ))}
+            {loadingFlowers
+              ? Array.from({ length: 4 }).map((_, index) => (
+                  <ProductCardSkeleton key={`featured-skeleton-${index}`} index={index} />
+                ))
+              : featuredFlowers.length === 0
+                ? (
+                    <div className="empty-state">
+                      <strong>No featured flowers yet.</strong>
+                      <p>Add flowers in admin to populate this section.</p>
+                    </div>
+                  )
+                : featuredFlowers.map((flower) => (
+                    <FlowerCard
+                      key={flower.id}
+                      flower={flower}
+                      onAdd={addToCart}
+                      formatCurrency={formatCurrency}
+                    />
+                  ))}
           </div>
         </section>
 
@@ -1143,20 +1362,26 @@ export default function App() {
             ))}
           </div>
 
-          {loadingFlowers ? <p className="loading-note">Loading flowers...</p> : null}
-          {!loadingFlowers && visibleFlowers.length === 0 ? (
-            <p className="loading-note">No flowers match your search.</p>
-          ) : null}
-
           <div className="products-grid shop-grid" ref={shopGridRef}>
-            {visibleFlowers.map((flower) => (
-              <FlowerCard
-                key={flower.id}
-                flower={flower}
-                onAdd={addToCart}
-                formatCurrency={formatCurrency}
-              />
-            ))}
+            {loadingFlowers
+              ? Array.from({ length: 8 }).map((_, index) => (
+                  <ProductCardSkeleton key={`shop-skeleton-${index}`} index={index} />
+                ))
+              : visibleFlowers.length === 0
+                ? (
+                    <div className="empty-state">
+                      <strong>No flowers match your filters.</strong>
+                      <p>Try another search or select a different occasion.</p>
+                    </div>
+                  )
+                : visibleFlowers.map((flower) => (
+                    <FlowerCard
+                      key={flower.id}
+                      flower={flower}
+                      onAdd={addToCart}
+                      formatCurrency={formatCurrency}
+                    />
+                  ))}
           </div>
         </section>
 
@@ -1229,7 +1454,7 @@ export default function App() {
                           <th>Occasion</th>
                           <th>Price</th>
                           <th>Stock</th>
-                          <th>Action</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1240,6 +1465,13 @@ export default function App() {
                             <td>{formatCurrency(flower.price)}</td>
                             <td>{flower.stock}</td>
                             <td className="table-action-cell">
+                              <button
+                                type="button"
+                                className="btn-ghost table-btn"
+                                onClick={() => startEditingFlower(flower)}
+                              >
+                                Edit
+                              </button>
                               <button
                                 type="button"
                                 className="danger-btn"
@@ -1257,8 +1489,8 @@ export default function App() {
                 </div>
 
                 <div className="admin-card">
-                  <h3>Add Flower</h3>
-                  <form className="form-grid" onSubmit={handleCreateFlower}>
+                  <h3>{editingFlowerId ? "Edit Flower" : "Add Flower"}</h3>
+                  <form className="form-grid" onSubmit={handleSaveFlower}>
                     <input
                       placeholder="Flower name"
                       value={flowerForm.name}
@@ -1288,6 +1520,7 @@ export default function App() {
                       placeholder="Stock"
                       type="number"
                       min="0"
+                      step="1"
                       value={flowerForm.stock}
                       onChange={(event) =>
                         setFlowerForm((previous) => ({
@@ -1322,6 +1555,38 @@ export default function App() {
                         }))
                       }
                     />
+                    <div className="focus-grid">
+                      <label>
+                        Image Focus X
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={flowerForm.imageFocusX}
+                          onChange={(event) =>
+                            setFlowerForm((previous) => ({
+                              ...previous,
+                              imageFocusX: Number(event.target.value)
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        Image Focus Y
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={flowerForm.imageFocusY}
+                          onChange={(event) =>
+                            setFlowerForm((previous) => ({
+                              ...previous,
+                              imageFocusY: Number(event.target.value)
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
                     <textarea
                       placeholder="Description"
                       value={flowerForm.description}
@@ -1332,8 +1597,36 @@ export default function App() {
                         }))
                       }
                     />
-                    <button className="btn-primary" type="submit">
-                      Save Flower
+                    <button className="btn-primary" type="submit" disabled={savingFlower}>
+                      {savingFlower ? "Saving..." : editingFlowerId ? "Save Changes" : "Save Flower"}
+                    </button>
+                    {editingFlowerId ? (
+                      <button className="btn-ghost" type="button" onClick={cancelEditingFlower}>
+                        Cancel Edit
+                      </button>
+                    ) : null}
+                  </form>
+                  <form className="form-grid bulk-stock-form" onSubmit={handleBulkStockUpdate}>
+                    <h4>Bulk Stock Update</h4>
+                    <select
+                      value={bulkStockOccasion}
+                      onChange={(event) => setBulkStockOccasion(event.target.value)}
+                    >
+                      {occasionTabs.map((tab) => (
+                        <option key={`bulk-${tab.value}`} value={tab.value}>
+                          {tab.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      step="1"
+                      placeholder="Stock delta (e.g. 5 or -3)"
+                      value={bulkStockDelta}
+                      onChange={(event) => setBulkStockDelta(event.target.value)}
+                    />
+                    <button className="btn-primary" type="submit" disabled={applyingBulkStock}>
+                      {applyingBulkStock ? "Updating..." : "Apply Stock Change"}
                     </button>
                   </form>
                 </div>
@@ -1397,8 +1690,24 @@ export default function App() {
                           <strong>#{order.id}</strong>
                           <p>{order.customer.name}</p>
                           {order.customer.phone ? <p className="order-contact">{order.customer.phone}</p> : null}
+                          <p className="order-contact">Method: {order.paymentMethod === "paypal" ? "PayPal" : "Cash"}</p>
                         </div>
-                        <div className="order-total">{formatCurrency(order.total)}</div>
+                        <div className="order-side">
+                          <div className="order-total">{formatCurrency(order.total)}</div>
+                          <div className={`status-badge ${normalizePaymentStatus(order.paymentStatus)}`}>
+                            {paymentStatusLabel(order.paymentStatus)}
+                          </div>
+                          <select
+                            className="order-status-select"
+                            value={normalizePaymentStatus(order.paymentStatus)}
+                            onChange={(event) => handleUpdateOrderPaymentStatus(order, event.target.value)}
+                            disabled={updatingOrderId === order.id}
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="paid">Paid</option>
+                            <option value="failed">Failed</option>
+                          </select>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1457,7 +1766,22 @@ export default function App() {
                 <strong>{cartCount}</strong>
               </div>
               <div className="cart-items">
-                {cartItems.length === 0 ? <p className="empty-note">Your cart is empty.</p> : null}
+                {cartItems.length === 0 ? (
+                  <div className="empty-state compact">
+                    <strong>Your cart is empty.</strong>
+                    <p>Add a bouquet from the shop to start checkout.</p>
+                    <button
+                      className="btn-ghost small"
+                      type="button"
+                      onClick={() => {
+                        setCartOpen(false);
+                        scrollToSection(shopRef);
+                      }}
+                    >
+                      Browse Flowers
+                    </button>
+                  </div>
+                ) : null}
                 {cartItems.map((item) => {
                   const hasImage = Boolean(item.flower.image);
                   return (
@@ -1467,7 +1791,8 @@ export default function App() {
                         style={
                           hasImage
                             ? {
-                                backgroundImage: `url(${item.flower.image})`
+                                backgroundImage: `url(${item.flower.image})`,
+                                backgroundPosition: flowerObjectPosition(item.flower)
                               }
                             : undefined
                         }
@@ -1583,6 +1908,9 @@ export default function App() {
                       PayPal
                     </label>
                   </div>
+                  <p className="payment-hint">
+                    New orders are created as <strong>Pending</strong>. Admin can mark them as Paid or Failed.
+                  </p>
                   {paymentMethod === "paypal" ? (
                     <a
                       className="btn-primary paypal-link"
@@ -1593,9 +1921,15 @@ export default function App() {
                       Pay with PayPal
                     </a>
                   ) : null}
-                  <button className="btn-primary" type="submit" disabled={submittingOrder}>
+                  <button
+                    className="btn-primary"
+                    type="submit"
+                    disabled={submittingOrder || cartItems.length === 0}
+                  >
                     {submittingOrder
                       ? "Placing..."
+                      : cartItems.length === 0
+                        ? "Add items to checkout"
                       : paymentMethod === "paypal"
                         ? "Place Order (PayPal selected)"
                         : "Place Order"}

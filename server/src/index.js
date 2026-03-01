@@ -14,12 +14,293 @@ const clientDistPath = path.resolve(__dirname, "../../client/dist");
 const clientIndexPath = path.join(clientDistPath, "index.html");
 const hasClientBuild = fs.existsSync(clientIndexPath);
 
+const ALLOWED_OCCASIONS = new Set([
+  "general",
+  "romance",
+  "birthday",
+  "wedding",
+  "thank-you"
+]);
+const ALLOWED_PAYMENT_METHODS = new Set(["cash", "paypal"]);
+const ALLOWED_PAYMENT_STATUSES = new Set(["pending", "paid", "failed"]);
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[0-9+\-\s()]{7,24}$/;
+const IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
+const MAX_STOCK = 10000;
+
 const app = express();
 const port = Number(process.env.PORT || 4000);
 
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
+
+function normalizeOccasion(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  return ALLOWED_OCCASIONS.has(normalized) ? normalized : null;
+}
+
+function normalizePaymentMethod(value) {
+  const normalized = String(value || "cash")
+    .trim()
+    .toLowerCase();
+  return ALLOWED_PAYMENT_METHODS.has(normalized) ? normalized : null;
+}
+
+function normalizePaymentStatus(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  return ALLOWED_PAYMENT_STATUSES.has(normalized) ? normalized : null;
+}
+
+function isValidImageUrl(value) {
+  if (!value) {
+    return true;
+  }
+
+  try {
+    const url = new URL(value);
+    return IMAGE_PROTOCOLS.has(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function normalizeFlowerFocus(value, fallback = 50) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+  if (number < 0 || number > 100) {
+    return null;
+  }
+  return Number(number.toFixed(2));
+}
+
+function normalizeFlowerCreatePayload(body) {
+  const {
+    name,
+    description = "",
+    price,
+    occasion = "general",
+    image = "",
+    imageFocusX = 50,
+    imageFocusY = 50,
+    stock = 0
+  } = body || {};
+
+  const normalizedName = String(name || "").trim();
+  if (normalizedName.length < 2) {
+    throw new Error("name must be at least 2 characters");
+  }
+
+  const parsedPrice = Number(price);
+  if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+    throw new Error("price must be greater than 0");
+  }
+
+  const parsedStock = Number(stock);
+  if (!Number.isFinite(parsedStock) || parsedStock < 0 || parsedStock > MAX_STOCK) {
+    throw new Error(`stock must be an integer between 0 and ${MAX_STOCK}`);
+  }
+
+  if (!Number.isInteger(parsedStock)) {
+    throw new Error("stock must be a whole number");
+  }
+
+  const normalizedOccasion = normalizeOccasion(occasion);
+  if (!normalizedOccasion) {
+    throw new Error("occasion is invalid");
+  }
+
+  const normalizedImage = String(image || "").trim();
+  if (!isValidImageUrl(normalizedImage)) {
+    throw new Error("image must be a valid http/https URL");
+  }
+
+  const normalizedFocusX = normalizeFlowerFocus(imageFocusX);
+  const normalizedFocusY = normalizeFlowerFocus(imageFocusY);
+  if (normalizedFocusX === null || normalizedFocusY === null) {
+    throw new Error("image focus values must be between 0 and 100");
+  }
+
+  return {
+    id: nanoid(10),
+    name: normalizedName,
+    description: String(description || "").trim(),
+    price: Number(parsedPrice.toFixed(2)),
+    occasion: normalizedOccasion,
+    image: normalizedImage,
+    imageFocusX: normalizedFocusX,
+    imageFocusY: normalizedFocusY,
+    stock: parsedStock,
+    createdAt: new Date().toISOString()
+  };
+}
+
+function normalizeFlowerPatchPayload(body) {
+  if (!body || typeof body !== "object") {
+    throw new Error("invalid request body");
+  }
+
+  const updates = {};
+
+  if (Object.prototype.hasOwnProperty.call(body, "name")) {
+    const normalizedName = String(body.name || "").trim();
+    if (normalizedName.length < 2) {
+      throw new Error("name must be at least 2 characters");
+    }
+    updates.name = normalizedName;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "description")) {
+    updates.description = String(body.description || "").trim();
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "price")) {
+    const parsedPrice = Number(body.price);
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      throw new Error("price must be greater than 0");
+    }
+    updates.price = Number(parsedPrice.toFixed(2));
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "occasion")) {
+    const normalizedOccasion = normalizeOccasion(body.occasion);
+    if (!normalizedOccasion) {
+      throw new Error("occasion is invalid");
+    }
+    updates.occasion = normalizedOccasion;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "image")) {
+    const normalizedImage = String(body.image || "").trim();
+    if (!isValidImageUrl(normalizedImage)) {
+      throw new Error("image must be a valid http/https URL");
+    }
+    updates.image = normalizedImage;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "imageFocusX")) {
+    const normalizedFocusX = normalizeFlowerFocus(body.imageFocusX);
+    if (normalizedFocusX === null) {
+      throw new Error("imageFocusX must be between 0 and 100");
+    }
+    updates.imageFocusX = normalizedFocusX;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "imageFocusY")) {
+    const normalizedFocusY = normalizeFlowerFocus(body.imageFocusY);
+    if (normalizedFocusY === null) {
+      throw new Error("imageFocusY must be between 0 and 100");
+    }
+    updates.imageFocusY = normalizedFocusY;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "stock")) {
+    const parsedStock = Number(body.stock);
+    if (!Number.isFinite(parsedStock) || parsedStock < 0 || parsedStock > MAX_STOCK) {
+      throw new Error(`stock must be an integer between 0 and ${MAX_STOCK}`);
+    }
+    if (!Number.isInteger(parsedStock)) {
+      throw new Error("stock must be a whole number");
+    }
+    updates.stock = parsedStock;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new Error("at least one flower field is required");
+  }
+
+  return updates;
+}
+
+function isValidPhone(value) {
+  const normalized = String(value || "").trim();
+  if (!PHONE_REGEX.test(normalized)) {
+    return false;
+  }
+  const digits = normalized.replace(/\D/g, "").length;
+  return digits >= 7 && digits <= 15;
+}
+
+function normalizeCartItems(items) {
+  const quantities = new Map();
+  for (const item of items) {
+    const flowerId = String(item?.flowerId || "").trim();
+    const quantity = Number(item?.quantity);
+    if (!flowerId || !Number.isInteger(quantity) || quantity <= 0 || quantity > 100) {
+      throw new Error("invalid cart item payload");
+    }
+    quantities.set(flowerId, (quantities.get(flowerId) || 0) + quantity);
+  }
+
+  return [...quantities.entries()].map(([flowerId, quantity]) => ({ flowerId, quantity }));
+}
+
+function normalizeOrderPayload(body) {
+  const { customer, items, paymentMethod = "cash" } = body || {};
+
+  if (!customer || typeof customer !== "object") {
+    throw new Error("customer details are required");
+  }
+
+  const customerName = String(customer.name || "").trim();
+  const customerEmail = String(customer.email || "").trim().toLowerCase();
+  const customerPhone = String(customer.phone || "").trim();
+  const customerAddress = String(customer.address || "").trim();
+
+  if (customerName.length < 2 || customerName.length > 120) {
+    throw new Error("customer.name must be between 2 and 120 characters");
+  }
+  if (!EMAIL_REGEX.test(customerEmail)) {
+    throw new Error("customer.email is invalid");
+  }
+  if (!isValidPhone(customerPhone)) {
+    throw new Error("customer.phone is invalid");
+  }
+  if (customerAddress.length < 6 || customerAddress.length > 240) {
+    throw new Error("customer.address must be between 6 and 240 characters");
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("at least one cart item is required");
+  }
+
+  const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
+  if (!normalizedPaymentMethod) {
+    throw new Error("paymentMethod must be cash or paypal");
+  }
+
+  return {
+    customer: {
+      name: customerName,
+      email: customerEmail,
+      phone: customerPhone,
+      address: customerAddress
+    },
+    paymentMethod: normalizedPaymentMethod,
+    paymentStatus: "pending",
+    items: normalizeCartItems(items)
+  };
+}
+
+function normalizeLegacyOrder(order) {
+  return {
+    ...order,
+    customer: {
+      name: String(order?.customer?.name || "").trim(),
+      email: String(order?.customer?.email || "").trim(),
+      phone: String(order?.customer?.phone || "").trim(),
+      address: String(order?.customer?.address || "").trim()
+    },
+    paymentMethod: normalizePaymentMethod(order?.paymentMethod) || "cash",
+    paymentStatus: normalizePaymentStatus(order?.paymentStatus) || "pending"
+  };
+}
 
 app.get("/api/health", (_req, res) => {
   res.json({
@@ -63,38 +344,71 @@ app.get("/api/flowers", async (req, res, next) => {
 
 app.post("/api/flowers", async (req, res, next) => {
   try {
-    const { name, description = "", price, occasion = "general", image = "", stock = 0 } = req.body ?? {};
-
-    if (!name || typeof name !== "string") {
-      return res.status(400).json({ message: "name is required" });
+    let flower;
+    try {
+      flower = normalizeFlowerCreatePayload(req.body);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
     }
-
-    const parsedPrice = Number(price);
-    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
-      return res.status(400).json({ message: "price must be greater than 0" });
-    }
-
-    const parsedStock = Number(stock);
-    if (!Number.isFinite(parsedStock) || parsedStock < 0) {
-      return res.status(400).json({ message: "stock must be 0 or greater" });
-    }
-
-    const newFlower = {
-      id: nanoid(10),
-      name: name.trim(),
-      description: String(description).trim(),
-      price: parsedPrice,
-      occasion: String(occasion).trim().toLowerCase(),
-      image: String(image).trim(),
-      stock: Math.floor(parsedStock),
-      createdAt: new Date().toISOString()
-    };
 
     const data = await readData();
-    data.flowers.push(newFlower);
+    data.flowers.push(flower);
     await writeData(data);
 
-    res.status(201).json(newFlower);
+    res.status(201).json(flower);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/flowers", async (req, res, next) => {
+  try {
+    const flowerId = String(req.query.id || "").trim();
+    if (!flowerId) {
+      return res.status(400).json({ message: "id query param is required" });
+    }
+
+    let updates;
+    try {
+      updates = normalizeFlowerPatchPayload(req.body);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    const data = await readData();
+    const index = data.flowers.findIndex((flower) => flower.id === flowerId);
+    if (index === -1) {
+      return res.status(404).json({ message: "flower not found" });
+    }
+
+    data.flowers[index] = {
+      ...data.flowers[index],
+      ...updates
+    };
+    await writeData(data);
+
+    return res.json(data.flowers[index]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/flowers", async (req, res, next) => {
+  try {
+    const flowerId = String(req.query.id || "").trim();
+    if (!flowerId) {
+      return res.status(400).json({ message: "id query param is required" });
+    }
+
+    const data = await readData();
+    const flowerIndex = data.flowers.findIndex((flower) => flower.id === flowerId);
+    if (flowerIndex === -1) {
+      return res.status(404).json({ message: "flower not found" });
+    }
+
+    const [removedFlower] = data.flowers.splice(flowerIndex, 1);
+    await writeData(data);
+    return res.status(200).json({ ok: true, removed: removedFlower });
   } catch (error) {
     next(error);
   }
@@ -103,9 +417,9 @@ app.post("/api/flowers", async (req, res, next) => {
 app.get("/api/orders", async (_req, res, next) => {
   try {
     const data = await readData();
-    const orders = [...data.orders].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
+    const orders = [...data.orders]
+      .map((order) => normalizeLegacyOrder(order))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     res.json(orders);
   } catch (error) {
     next(error);
@@ -114,27 +428,11 @@ app.get("/api/orders", async (_req, res, next) => {
 
 app.post("/api/orders", async (req, res, next) => {
   try {
-    const { customer, items } = req.body ?? {};
-
-    if (!customer || typeof customer !== "object") {
-      return res.status(400).json({ message: "customer details are required" });
-    }
-
-    const customerName = String(customer.name || "").trim();
-    const customerEmail = String(customer.email || "").trim();
-    const customerPhone = String(customer.phone || "").trim();
-    const customerAddress = String(customer.address || "").trim();
-
-    if (!customerName || !customerEmail || !customerPhone || !customerAddress) {
-      return res
-        .status(400)
-        .json({
-          message: "customer.name, customer.email, customer.phone and customer.address are required"
-        });
-    }
-
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "at least one cart item is required" });
+    let payload;
+    try {
+      payload = normalizeOrderPayload(req.body);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
     }
 
     const data = await readData();
@@ -142,20 +440,13 @@ app.post("/api/orders", async (req, res, next) => {
 
     const normalizedItems = [];
 
-    for (const item of items) {
-      const flowerId = String(item.flowerId || "").trim();
-      const quantity = Math.floor(Number(item.quantity));
-
-      if (!flowerId || !Number.isFinite(quantity) || quantity <= 0) {
-        return res.status(400).json({ message: "invalid cart item payload" });
-      }
-
-      const flower = flowerMap.get(flowerId);
+    for (const item of payload.items) {
+      const flower = flowerMap.get(item.flowerId);
       if (!flower) {
-        return res.status(404).json({ message: `flower not found: ${flowerId}` });
+        return res.status(404).json({ message: `flower not found: ${item.flowerId}` });
       }
 
-      if (flower.stock < quantity) {
+      if (flower.stock < item.quantity) {
         return res.status(409).json({
           message: `insufficient stock for ${flower.name}`,
           available: flower.stock
@@ -166,8 +457,8 @@ app.post("/api/orders", async (req, res, next) => {
         flowerId: flower.id,
         name: flower.name,
         unitPrice: flower.price,
-        quantity,
-        lineTotal: Number((flower.price * quantity).toFixed(2))
+        quantity: item.quantity,
+        lineTotal: Number((flower.price * item.quantity).toFixed(2))
       });
     }
 
@@ -182,12 +473,9 @@ app.post("/api/orders", async (req, res, next) => {
 
     const order = {
       id: nanoid(12),
-      customer: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        address: customerAddress
-      },
+      customer: payload.customer,
+      paymentMethod: payload.paymentMethod,
+      paymentStatus: payload.paymentStatus,
       items: normalizedItems,
       total,
       createdAt: new Date().toISOString()
@@ -196,6 +484,37 @@ app.post("/api/orders", async (req, res, next) => {
     data.orders.push(order);
     await writeData(data);
     res.status(201).json(order);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/orders", async (req, res, next) => {
+  try {
+    const orderId = String(req.query.id || "").trim();
+    if (!orderId) {
+      return res.status(400).json({ message: "id query param is required" });
+    }
+
+    const paymentStatus = normalizePaymentStatus(req.body?.paymentStatus);
+    if (!paymentStatus) {
+      return res.status(400).json({ message: "paymentStatus must be pending, paid, or failed" });
+    }
+
+    const data = await readData();
+    const index = data.orders.findIndex((order) => order.id === orderId);
+    if (index === -1) {
+      return res.status(404).json({ message: "order not found" });
+    }
+
+    const normalized = normalizeLegacyOrder(data.orders[index]);
+    data.orders[index] = {
+      ...normalized,
+      paymentStatus
+    };
+
+    await writeData(data);
+    return res.json(data.orders[index]);
   } catch (error) {
     next(error);
   }

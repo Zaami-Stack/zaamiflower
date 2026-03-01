@@ -1,7 +1,36 @@
 const { requireRole } = require("./_auth");
 const { createId, getStore } = require("./_store");
 const { dbRequest, ensureSeedFlowers, isDatabaseConfigured, toInFilter } = require("./_db");
-const { json, methodNotAllowed, readJsonBody } = require("./_utils");
+const { json, methodNotAllowed, parseUrl, readJsonBody } = require("./_utils");
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[0-9+\-\s()]{7,24}$/;
+const ALLOWED_PAYMENT_METHODS = new Set(["cash", "paypal"]);
+const ALLOWED_PAYMENT_STATUSES = new Set(["pending", "paid", "failed"]);
+
+function normalizePaymentMethod(value) {
+  const normalized = String(value || "cash")
+    .trim()
+    .toLowerCase();
+  return ALLOWED_PAYMENT_METHODS.has(normalized) ? normalized : null;
+}
+
+function normalizePaymentStatus(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  return ALLOWED_PAYMENT_STATUSES.has(normalized) ? normalized : null;
+}
+
+function isValidPhoneNumber(value) {
+  const normalized = String(value || "").trim();
+  if (!PHONE_REGEX.test(normalized)) {
+    return false;
+  }
+
+  const digitCount = normalized.replace(/\D/g, "").length;
+  return digitCount >= 7 && digitCount <= 15;
+}
 
 function toOrderModel(orderRow, itemRows) {
   const items = itemRows
@@ -14,6 +43,9 @@ function toOrderModel(orderRow, itemRows) {
       lineTotal: Number(item.line_total)
     }));
 
+  const paymentMethod = normalizePaymentMethod(orderRow.payment_method) || "cash";
+  const paymentStatus = normalizePaymentStatus(orderRow.payment_status) || "pending";
+
   return {
     id: orderRow.id,
     customer: {
@@ -22,9 +54,25 @@ function toOrderModel(orderRow, itemRows) {
       phone: orderRow.customer_phone || "",
       address: orderRow.customer_address
     },
+    paymentMethod,
+    paymentStatus,
     items,
     total: Number(orderRow.total),
     createdAt: orderRow.created_at || new Date().toISOString()
+  };
+}
+
+function normalizeLegacyOrder(order) {
+  return {
+    ...order,
+    customer: {
+      name: String(order?.customer?.name || "").trim(),
+      email: String(order?.customer?.email || "").trim(),
+      phone: String(order?.customer?.phone || "").trim(),
+      address: String(order?.customer?.address || "").trim()
+    },
+    paymentMethod: normalizePaymentMethod(order?.paymentMethod) || "cash",
+    paymentStatus: normalizePaymentStatus(order?.paymentStatus) || "pending"
   };
 }
 
@@ -57,7 +105,9 @@ async function listOrdersFromDb() {
 
 function listOrdersFromMemory() {
   const store = getStore();
-  return [...store.orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return [...store.orders]
+    .map((order) => normalizeLegacyOrder(order))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 async function listOrders(_req, res) {
@@ -69,24 +119,57 @@ async function listOrders(_req, res) {
   return json(res, 200, listOrdersFromMemory());
 }
 
+function normalizeCartItems(items) {
+  const quantities = new Map();
+
+  for (const item of items) {
+    const flowerId = String(item?.flowerId || "").trim();
+    const quantity = Number(item?.quantity);
+    if (!flowerId || !Number.isInteger(quantity) || quantity <= 0 || quantity > 100) {
+      throw new Error("invalid cart item payload");
+    }
+
+    quantities.set(flowerId, (quantities.get(flowerId) || 0) + quantity);
+  }
+
+  return [...quantities.entries()].map(([flowerId, quantity]) => ({ flowerId, quantity }));
+}
+
 function validateOrderPayload(body) {
-  const { customer, items } = body || {};
+  const { customer, items, paymentMethod = "cash" } = body || {};
 
   if (!customer || typeof customer !== "object") {
     throw new Error("customer details are required");
   }
 
   const customerName = String(customer.name || "").trim();
-  const customerEmail = String(customer.email || "").trim();
+  const customerEmail = String(customer.email || "").trim().toLowerCase();
   const customerPhone = String(customer.phone || "").trim();
   const customerAddress = String(customer.address || "").trim();
 
-  if (!customerName || !customerEmail || !customerPhone || !customerAddress) {
-    throw new Error("customer.name, customer.email, customer.phone and customer.address are required");
+  if (customerName.length < 2 || customerName.length > 120) {
+    throw new Error("customer.name must be between 2 and 120 characters");
+  }
+
+  if (!EMAIL_REGEX.test(customerEmail)) {
+    throw new Error("customer.email is invalid");
+  }
+
+  if (!isValidPhoneNumber(customerPhone)) {
+    throw new Error("customer.phone is invalid");
+  }
+
+  if (customerAddress.length < 6 || customerAddress.length > 240) {
+    throw new Error("customer.address must be between 6 and 240 characters");
   }
 
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error("at least one cart item is required");
+  }
+
+  const normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
+  if (!normalizedPaymentMethod) {
+    throw new Error("paymentMethod must be cash or paypal");
   }
 
   return {
@@ -94,12 +177,23 @@ function validateOrderPayload(body) {
     customerEmail,
     customerPhone,
     customerAddress,
-    items
+    paymentMethod: normalizedPaymentMethod,
+    paymentStatus: "pending",
+    items: normalizeCartItems(items)
   };
 }
 
 async function createOrderInDb(payload) {
-  const { customerName, customerEmail, customerPhone, customerAddress, items } = payload;
+  const {
+    customerName,
+    customerEmail,
+    customerPhone,
+    customerAddress,
+    paymentMethod,
+    paymentStatus,
+    items
+  } = payload;
+
   await ensureSeedFlowers();
 
   const flowerRows = await dbRequest({
@@ -124,21 +218,14 @@ async function createOrderInDb(payload) {
   const normalizedItems = [];
 
   for (const item of items) {
-    const flowerId = String(item.flowerId || "").trim();
-    const quantity = Math.floor(Number(item.quantity));
-
-    if (!flowerId || !Number.isFinite(quantity) || quantity <= 0) {
-      throw new Error("invalid cart item payload");
-    }
-
-    const flower = flowerMap.get(flowerId);
+    const flower = flowerMap.get(item.flowerId);
     if (!flower) {
-      const error = new Error(`flower not found: ${flowerId}`);
+      const error = new Error(`flower not found: ${item.flowerId}`);
       error.status = 404;
       throw error;
     }
 
-    if (flower.stock < quantity) {
+    if (flower.stock < item.quantity) {
       const error = new Error(`insufficient stock for ${flower.name}`);
       error.status = 409;
       throw error;
@@ -148,8 +235,8 @@ async function createOrderInDb(payload) {
       flowerId: flower.id,
       name: flower.name,
       unitPrice: flower.price,
-      quantity,
-      lineTotal: Number((flower.price * quantity).toFixed(2))
+      quantity: item.quantity,
+      lineTotal: Number((flower.price * item.quantity).toFixed(2))
     });
   }
 
@@ -180,6 +267,8 @@ async function createOrderInDb(payload) {
       customer_email: customerEmail,
       customer_phone: customerPhone,
       customer_address: customerAddress,
+      payment_method: paymentMethod,
+      payment_status: paymentStatus,
       total,
       created_at: new Date().toISOString()
     }
@@ -207,6 +296,8 @@ async function createOrderInDb(payload) {
       phone: customerPhone,
       address: customerAddress
     },
+    paymentMethod,
+    paymentStatus,
     items: normalizedItems,
     total,
     createdAt: orderRows[0].created_at || new Date().toISOString()
@@ -214,27 +305,28 @@ async function createOrderInDb(payload) {
 }
 
 function createOrderInMemory(payload) {
-  const { customerName, customerEmail, customerPhone, customerAddress, items } = payload;
+  const {
+    customerName,
+    customerEmail,
+    customerPhone,
+    customerAddress,
+    paymentMethod,
+    paymentStatus,
+    items
+  } = payload;
   const store = getStore();
   const flowerMap = new Map(store.flowers.map((flower) => [flower.id, flower]));
   const normalizedItems = [];
 
   for (const item of items) {
-    const flowerId = String(item.flowerId || "").trim();
-    const quantity = Math.floor(Number(item.quantity));
-
-    if (!flowerId || !Number.isFinite(quantity) || quantity <= 0) {
-      throw new Error("invalid cart item payload");
-    }
-
-    const flower = flowerMap.get(flowerId);
+    const flower = flowerMap.get(item.flowerId);
     if (!flower) {
-      const error = new Error(`flower not found: ${flowerId}`);
+      const error = new Error(`flower not found: ${item.flowerId}`);
       error.status = 404;
       throw error;
     }
 
-    if (flower.stock < quantity) {
+    if (flower.stock < item.quantity) {
       const error = new Error(`insufficient stock for ${flower.name}`);
       error.status = 409;
       throw error;
@@ -244,8 +336,8 @@ function createOrderInMemory(payload) {
       flowerId: flower.id,
       name: flower.name,
       unitPrice: flower.price,
-      quantity,
-      lineTotal: Number((flower.price * quantity).toFixed(2))
+      quantity: item.quantity,
+      lineTotal: Number((flower.price * item.quantity).toFixed(2))
     });
   }
 
@@ -266,6 +358,8 @@ function createOrderInMemory(payload) {
       phone: customerPhone,
       address: customerAddress
     },
+    paymentMethod,
+    paymentStatus,
     items: normalizedItems,
     total,
     createdAt: new Date().toISOString()
@@ -273,6 +367,57 @@ function createOrderInMemory(payload) {
 
   store.orders.push(order);
   return order;
+}
+
+async function updateOrderStatusInDb(orderId, paymentStatus) {
+  const rows = await dbRequest({
+    table: "orders",
+    method: "PATCH",
+    query: {
+      id: `eq.${orderId}`,
+      select: "*"
+    },
+    body: {
+      payment_status: paymentStatus
+    }
+  });
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    const error = new Error("order not found");
+    error.status = 404;
+    throw error;
+  }
+
+  const itemRows = await dbRequest({
+    table: "order_items",
+    method: "GET",
+    query: {
+      select: "*",
+      order_id: `eq.${orderId}`,
+      order: "id.asc"
+    },
+    prefer: null
+  });
+
+  return toOrderModel(rows[0], itemRows);
+}
+
+function updateOrderStatusInMemory(orderId, paymentStatus) {
+  const store = getStore();
+  const index = store.orders.findIndex((order) => order.id === orderId);
+  if (index === -1) {
+    const error = new Error("order not found");
+    error.status = 404;
+    throw error;
+  }
+
+  const normalized = normalizeLegacyOrder(store.orders[index]);
+  const updatedOrder = {
+    ...normalized,
+    paymentStatus
+  };
+  store.orders[index] = updatedOrder;
+  return updatedOrder;
 }
 
 async function createOrder(req, res) {
@@ -302,6 +447,36 @@ async function createOrder(req, res) {
   }
 }
 
+async function updateOrderStatus(req, res) {
+  const url = parseUrl(req);
+  const orderId = String(url.searchParams.get("id") || "").trim();
+  if (!orderId) {
+    return json(res, 400, { message: "id query param is required" });
+  }
+
+  let body;
+  try {
+    body = await readJsonBody(req);
+  } catch {
+    return json(res, 400, { message: "invalid JSON body" });
+  }
+
+  const paymentStatus = normalizePaymentStatus(body?.paymentStatus);
+  if (!paymentStatus) {
+    return json(res, 400, { message: "paymentStatus must be pending, paid, or failed" });
+  }
+
+  try {
+    const order = isDatabaseConfigured()
+      ? await updateOrderStatusInDb(orderId, paymentStatus)
+      : updateOrderStatusInMemory(orderId, paymentStatus);
+    return json(res, 200, order);
+  } catch (error) {
+    const status = Number(error.status || 400);
+    return json(res, status, { message: error.message || "failed to update order status" });
+  }
+}
+
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "GET") {
@@ -320,7 +495,15 @@ module.exports = async function handler(req, res) {
       return await createOrder(req, res);
     }
 
-    return methodNotAllowed(res, ["GET", "POST"]);
+    if (req.method === "PATCH") {
+      const user = requireRole(req, res, ["admin"]);
+      if (!user) {
+        return;
+      }
+      return await updateOrderStatus(req, res);
+    }
+
+    return methodNotAllowed(res, ["GET", "POST", "PATCH"]);
   } catch (error) {
     return json(res, 500, { message: error.message || "internal server error" });
   }
