@@ -2061,7 +2061,7 @@ export default function App() {
                   }
                   required
                 />
-                <button className="btn-primary" type="submit">
+                <button className="btn-primary auth-submit-btn" type="submit">
                   Login
                 </button>
               </form>
@@ -2113,7 +2113,7 @@ export default function App() {
                   }
                   required
                 />
-                <button className="btn-primary" type="submit">
+                <button className="btn-primary auth-submit-btn" type="submit">
                   Sign Up
                 </button>
               </form>

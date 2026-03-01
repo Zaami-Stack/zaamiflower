@@ -1597,6 +1597,12 @@ textarea:focus {
   color: var(--muted);
 }
 
+.auth-submit-btn {
+  min-height: 50px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
 .link-btn {
   border: none;
   background: transparent;
