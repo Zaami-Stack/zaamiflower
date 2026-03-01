@@ -11,12 +11,14 @@ import {
   getFlowers,
   getNotifications,
   getOrders,
+  getSiteSettings,
   getSession,
   login,
   signup,
   logout,
   updateFlower,
-  updateOrderStatus
+  updateOrderStatus,
+  updateSiteSettings
 } from "./api";
 
 const initialFlowerForm = {
@@ -63,6 +65,8 @@ const occasionTabs = [
 ];
 const PAYPAL_ME_URL = "https://paypal.me/AnasZaami";
 const WHATSAPP_CHAT_URL = "https://wa.me/212775094615";
+const DEFAULT_HERO_IMAGE =
+  "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=80";
 const marqueeHighlights = [
   "Same-day delivery",
   "Premium quality",
@@ -149,6 +153,15 @@ function isValidPhone(value) {
   }
   const digits = normalized.replace(/\D/g, "").length;
   return digits >= 7 && digits <= 15;
+}
+
+function isValidHttpImageUrl(value) {
+  try {
+    const parsed = new URL(String(value || "").trim());
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 function normalizeFlowerModel(flower) {
@@ -258,6 +271,12 @@ export default function App() {
   const [loginForm, setLoginForm] = useState(initialLoginForm);
   const [signupForm, setSignupForm] = useState(initialSignupForm);
   const [flowerForm, setFlowerForm] = useState(initialFlowerForm);
+  const [siteSettings, setSiteSettings] = useState({
+    heroImage: DEFAULT_HERO_IMAGE,
+    updatedAt: ""
+  });
+  const [heroImageForm, setHeroImageForm] = useState(DEFAULT_HERO_IMAGE);
+  const [savingHeroImage, setSavingHeroImage] = useState(false);
   const [notificationForm, setNotificationForm] = useState(initialNotificationForm);
   const [checkoutForm, setCheckoutForm] = useState(initialCheckoutForm);
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -645,10 +664,30 @@ export default function App() {
     }
   };
 
+  const refreshSiteSettings = async () => {
+    try {
+      const response = await getSiteSettings();
+      const heroImage = isValidHttpImageUrl(response?.heroImage)
+        ? String(response.heroImage).trim()
+        : DEFAULT_HERO_IMAGE;
+      setSiteSettings({
+        heroImage,
+        updatedAt: response?.updatedAt || ""
+      });
+      setHeroImageForm(heroImage);
+    } catch {
+      setSiteSettings((previous) => ({
+        ...previous,
+        heroImage: previous.heroImage || DEFAULT_HERO_IMAGE
+      }));
+    }
+  };
+
   useEffect(() => {
     refreshSession();
     refreshFlowers();
     refreshNotifications();
+    refreshSiteSettings();
   }, []);
 
   useEffect(() => {
@@ -979,6 +1018,34 @@ export default function App() {
     }
   };
 
+  const handleSaveHeroImage = async (event) => {
+    event.preventDefault();
+    const heroImage = String(heroImageForm || "").trim();
+
+    if (!isValidHttpImageUrl(heroImage)) {
+      showToast("Enter a valid http/https image URL.");
+      return;
+    }
+
+    setSavingHeroImage(true);
+    try {
+      const response = await updateSiteSettings({ heroImage });
+      const normalizedImage = isValidHttpImageUrl(response?.heroImage)
+        ? String(response.heroImage).trim()
+        : heroImage;
+      setSiteSettings({
+        heroImage: normalizedImage,
+        updatedAt: response?.updatedAt || new Date().toISOString()
+      });
+      setHeroImageForm(normalizedImage);
+      showToast("Hero image updated.");
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      setSavingHeroImage(false);
+    }
+  };
+
   const handleUpdateOrderPaymentStatus = async (order, nextStatus) => {
     if (normalizePaymentStatus(order.paymentStatus) === normalizePaymentStatus(nextStatus)) {
       return;
@@ -1241,7 +1308,7 @@ export default function App() {
         <div className="hero-right">
           <img
             className="hero-image"
-            src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=80"
+            src={siteSettings.heroImage || DEFAULT_HERO_IMAGE}
             alt="Fresh bouquet arrangement"
             loading="lazy"
           />
@@ -1629,6 +1696,25 @@ export default function App() {
                       {applyingBulkStock ? "Updating..." : "Apply Stock Change"}
                     </button>
                   </form>
+                </div>
+
+                <div className="admin-card">
+                  <h3>Hero Banner Image</h3>
+                  <form className="form-grid" onSubmit={handleSaveHeroImage}>
+                    <input
+                      type="url"
+                      placeholder="Hero image URL"
+                      value={heroImageForm}
+                      onChange={(event) => setHeroImageForm(event.target.value)}
+                      required
+                    />
+                    <button className="btn-primary" type="submit" disabled={savingHeroImage}>
+                      {savingHeroImage ? "Saving..." : "Update Hero Image"}
+                    </button>
+                  </form>
+                  <div className="hero-settings-preview">
+                    <img src={heroImageForm || siteSettings.heroImage || DEFAULT_HERO_IMAGE} alt="Hero preview" />
+                  </div>
                 </div>
 
                 <div className="admin-card">

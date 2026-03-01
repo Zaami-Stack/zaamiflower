@@ -1024,6 +1024,22 @@ th {
   color: var(--muted);
 }
 
+.hero-settings-preview {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f7f2eb;
+  aspect-ratio: 16 / 10;
+}
+
+.hero-settings-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .danger-btn {
   border: 1px solid #e6c8c3;
   background: #fff3f1;

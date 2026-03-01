@@ -73,9 +73,20 @@ function getOrders() {
   return request("/orders");
 }
 
+function getSiteSettings() {
+  return request("/settings");
+}
+
 function createOrder(payload) {
   return request("/orders", {
     method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+function updateSiteSettings(payload) {
+  return request("/settings", {
+    method: "PATCH",
     body: JSON.stringify(payload)
   });
 }
@@ -139,6 +150,8 @@ export {
   deleteFlower,
   createOrder,
   updateFlower,
+  getSiteSettings,
+  updateSiteSettings,
   updateOrderStatus,
   createNotification,
   getFlowers,

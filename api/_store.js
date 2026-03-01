@@ -1,4 +1,6 @@
 const { randomUUID } = require("node:crypto");
+const DEFAULT_HERO_IMAGE =
+  "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=80";
 
 const seedFlowers = [
   {
@@ -65,7 +67,11 @@ function getStore() {
       flowers: clone(seedFlowers),
       orders: [],
       users: [],
-      notifications: []
+      notifications: [],
+      settings: {
+        heroImage: DEFAULT_HERO_IMAGE,
+        updatedAt: new Date().toISOString()
+      }
     };
   }
   return globalThis.__FLOWER_STORE__;
@@ -76,6 +82,7 @@ function createId(size = 12) {
 }
 
 module.exports = {
+  DEFAULT_HERO_IMAGE,
   seedFlowers,
   getStore,
   createId

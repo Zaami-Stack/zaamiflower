@@ -74,6 +74,8 @@ If auth variables are missing, login and protected routes return configuration e
 ## API Endpoints
 
 - `GET /api/health`
+- `GET /api/settings`
+- `PATCH /api/settings` (admin)
 - `GET /api/flowers?search=&occasion=&maxPrice=`
 - `POST /api/flowers` (admin)
 - `PATCH /api/flowers?id=<flowerId>` (admin)

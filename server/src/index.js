@@ -27,6 +27,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[0-9+\-\s()]{7,24}$/;
 const IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
 const MAX_STOCK = 10000;
+const DEFAULT_HERO_IMAGE =
+  "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=80";
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
@@ -67,6 +69,14 @@ function isValidImageUrl(value) {
   } catch {
     return false;
   }
+}
+
+function normalizeSiteSettings(data) {
+  const current = data?.settings || {};
+  return {
+    heroImage: isValidImageUrl(current.heroImage) ? String(current.heroImage) : DEFAULT_HERO_IMAGE,
+    updatedAt: current.updatedAt || new Date().toISOString()
+  };
 }
 
 function normalizeFlowerFocus(value, fallback = 50) {
@@ -308,6 +318,35 @@ app.get("/api/health", (_req, res) => {
     service: "flower-shop-api",
     timestamp: new Date().toISOString()
   });
+});
+
+app.get("/api/settings", async (_req, res, next) => {
+  try {
+    const data = await readData();
+    const settings = normalizeSiteSettings(data);
+    res.json(settings);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/settings", async (req, res, next) => {
+  try {
+    const heroImage = String(req.body?.heroImage || "").trim();
+    if (!heroImage || !isValidImageUrl(heroImage)) {
+      return res.status(400).json({ message: "heroImage must be a valid http/https URL" });
+    }
+
+    const data = await readData();
+    data.settings = {
+      heroImage,
+      updatedAt: new Date().toISOString()
+    };
+    await writeData(data);
+    return res.json(data.settings);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/api/flowers", async (req, res, next) => {

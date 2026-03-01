@@ -61,7 +61,12 @@ const defaultData = {
       createdAt: "2026-01-15T10:00:00.000Z"
     }
   ],
-  orders: []
+  orders: [],
+  settings: {
+    heroImage:
+      "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=1200&q=80",
+    updatedAt: new Date().toISOString()
+  }
 };
 
 async function ensureDataFile() {
