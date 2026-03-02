@@ -188,8 +188,8 @@ main {
 }
 
 .notify-btn {
-  border: 1px solid var(--border);
-  background: #ffffff;
+  border: none;
+  background: transparent;
   color: var(--dark);
   min-height: 40px;
   padding: 8px 10px;
@@ -202,7 +202,6 @@ main {
 }
 
 .notify-btn:hover {
-  border-color: var(--accent);
   color: var(--accent);
 }
 
